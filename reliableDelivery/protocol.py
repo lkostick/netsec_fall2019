@@ -9,7 +9,7 @@ logger = logging.getLogger("playground.__connector__." + __name__)
 
 
 class HandshakePacket(PacketType):
-    DEFINITION_IDENTIFIER = "handshakepacket"
+    DEFINITION_IDENTIFIER = "poop.handshakepacket"
     DEFINITION_VERSION = "1.0"
 
     NOT_STARTED = 0
