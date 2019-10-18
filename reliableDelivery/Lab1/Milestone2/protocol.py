@@ -1,53 +1,23 @@
 from playground.network.common import StackingProtocolFactory, StackingProtocol, StackingTransport
-from playground.network.packet.fieldtypes import UINT8, UINT32, STRING, BUFFER
-from playground.network.packet.fieldtypes.attributes import Optional
 from playground.network.packet import PacketType, FIELD_NOT_SET
 import logging
 import random
+from packets import *
+import math
 
 logger = logging.getLogger("playground.__connector__." + __name__)
+# max value a UINT32 can store
+MAX_UINT32 = int(math.pow(2,32) - 1)
 
-class PoopPacketType(PacketType):
-    DEFINITION_IDENTIFIER = "poop"
-    DEFINITION_VERSION = "1.0"
-
-class PoopHandshakePacket(PoopPacketType):
-    DEFINITION_IDENTIFIER = "poop.handshakepacket"
-    DEFINITION_VERSION = "1.0"
-
-    NOT_STARTED = 0
-    SUCCESS = 1
-    ERROR = 2
-
-    FIELDS = [
-        ("syn", UINT32({Optional: True})),
-        ("ack", UINT32({Optional: True})),
-        ("status", UINT8),
-        ("error", STRING({Optional: True}))
-    ]
-
-class PoopDataPacket(PoopPacketType):
-    DEFINITION_IDENTIFIER = "poop.datapacket"
-    DEFINITION_VERSION = "1.0"
-
-    FIELDS = [
-        ("seq", UINT32),
-        ("data", BUFFER)
-    ]
-
-def is_set(self, *fields):
-    isset = True
+def is_set(*fields):
     for field in fields:
         if field == FIELD_NOT_SET:
-            isset = False
-            break
-    return isset
+            return False
+    return True
+
 
 def increment_mod(uint32):
     return (uint32 + 1) % (MAX_UINT32 + 1)
-
-# max value a UINT32 can store
-MAX_UINT32 = 4294967295
 
 
 class PoopTransport(StackingTransport):
@@ -58,7 +28,7 @@ class PoopTransport(StackingTransport):
     # ALWAYS CALL setMode() BEFORE setSeq() !!!!!
     def setSeq(self, seq):
         logger.debug('setting {} side PoopTransport init seq to {}'.format(self._mode, seq))
-        self.seq = seq;
+        self.seq = seq
 
     def write(self, data):
         self.seq = increment_mod(self.seq)
@@ -68,17 +38,16 @@ class PoopTransport(StackingTransport):
         p.data = data
         self.lowerTransport().write(p.__serialize__())
 
+
 class PoopHandshakeClientProtocol(StackingProtocol):
     def __init__(self):
         super().__init__()
         self._mode = "CLIENT"
         self.deserializer = PoopPacketType.Deserializer()
-        # self.syn = X
-        self.syn = None # will be used to sequence outbound packets... by feeding original syn value to a transport which will store the value and do the arithmetic for the client
-        # self.ack = Y
-        self.ack = None # will be used to check sequence of incoming packets
+        self.syn = None     # will be used to sequence outbound packets... by feeding original syn value to a transport which will store the value and do the arithmetic for the client
+        self.ack = None     # will be used to check sequence of incoming packets
         self.handshakeComplete = False
-        self.state = 0 # increments by 1 for each packet sent during the handshake
+        self.state = 0      # increments by 1 for each packet sent during the handshake
 
     def connection_made(self, transport):
         self.transport = transport
@@ -89,6 +58,10 @@ class PoopHandshakeClientProtocol(StackingProtocol):
         self.state += 1
         logger.debug('{} side sending packet:\nsyn: {}\nack: {}\nstatus: {}\nerror: {}'.format(self._mode, packet.syn, packet.ack, packet.status, packet.error))
         self.transport.write(packetBytes)
+
+    def handle_handshake_error(self):
+        self.handshakeComplete = False
+        self.state = 0
 
     def data_received(self, data):
         logger.debug("{} POOP received a buffer of size {}".format(self._mode, len(data)))
@@ -118,7 +91,7 @@ class PoopHandshakeClientProtocol(StackingProtocol):
         else:
             for pkt in self.deserializer.nextPackets():
                 if isinstance(pkt, PoopHandshakePacket):
-                    if self.state==1 and pkt.status==PoopHandshakePacket.SUCCESS and is_set(pkt.syn, pkt.ack):
+                    if self.state==1 and pkt.status==PoopHandshakePacket.SUCCESS and is_set(pkt.syn, pkt.ack) and not is_set(pkt.error):
                         if pkt.ack==increment_mod(self.syn):
                             self.ack = pkt.syn
                             p = PoopHandshakePacket(status=PoopHandshakePacket.SUCCESS)
@@ -137,16 +110,32 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                             higher_transport.setSeq(self.syn)
                             self.higherProtocol().connection_made(higher_transport)
                         else:
-                            # TODO error
+                            # TODO error: What should be done if the error is noticed by the client side
+                            self.handle_handshake_error()
                             # ack does not match syn+1
                             # I don't think this is part of milestone 2 yet
-                            pass
+                            p = PoopHandshakePacket(status=PoopHandshakePacket.ERROR)
+                            p.error = 'Client: Ack does not match Syn + 1'
+                            logger.debug('{} side sending packet:\nsyn: {}\nack: {}\nstatus: {}\nerror: {}'.format(self._mode, p.syn, p.ack, p.status, p.error))
+                            self.transport.write(p.__serialize__())
+                    elif pkt.status == PoopHandshakePacket.ERROR:
+                        logger.debug('Client: An error packet was received from the server: ' + str(pkt.error))
+                        self.handle_handshake_error()
+                        # TODO error: What should be done if the server has identified the error and sent the client an error packet
+
                     else:
-                        # TODO error
+                        # TODO error: What should be done if the error is noticed by the client side
                         # either state != 1 or status != SUCCESS or syn not set or ack not set
-                        pass
+                        self.handle_handshake_error()
+                        p = PoopHandshakePacket(status=PoopHandshakePacket.ERROR)
+                        p.error = 'Client: Either state != 1 or status != SUCCESS or syn not set or ack not set'
+                        logger.debug(
+                            '{} side sending packet:\nsyn: {}\nack: {}\nstatus: {}\nerror: {}'.format(self._mode, p.syn,
+                                                                                                      p.ack, p.status,
+                                                                                                      p.error))
+                        self.transport.write(p.__serialize__())
                 else:
-                    # TODO error
+                    # TODO error: What should be done if the error is noticed by the client side
                     # not the PoopHandshakePacket
                     """
                     if we want to retry the whole handshake on an error, we need to:
@@ -156,7 +145,14 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                     send error packet?
                     maybe other things I'm forgetting?
                     """
-                    pass
+                    self.handle_handshake_error()
+                    p = PoopHandshakePacket(status=PoopHandshakePacket.ERROR)
+                    p.error = 'Client: During the handshake a non-handshake packet is being sent!'
+                    logger.debug(
+                        '{} side sending packet:\nsyn: {}\nack: {}\nstatus: {}\nerror: {}'.format(self._mode, p.syn,
+                                                                                                  p.ack, p.status,
+                                                                                                  p.error))
+                    self.transport.write(p.__serialize__())
 
     def connection_lost(self, exc):
         logger.debug("{} POOP connection lost. Shutting down higher layer.".format(self._mode))
@@ -167,15 +163,17 @@ class PoopHandshakeServerProtocol(StackingProtocol):
         super().__init__()
         self._mode = "SERVER"
         self.deserializer = PoopPacketType.Deserializer()
-        # self.syn = Y
-        self.syn = None # will be used to sequence outbound packets... by feeding original syn value to a transport which will store the value and do the arithmetic for the client
-        # self.ack = X
-        self.ack = None # will be used to sequence of incoming packets
+        self.syn = None     # will be used to sequence outbound packets... by feeding original syn value to a transport which will store the value and do the arithmetic for the client
+        self.ack = None     # will be used to sequence of incoming packets
         self.handshakeComplete = False
-        self.state = 0 # increments by 1 for each packet sent during the handshake
+        self.state = 0      # increments by 1 for each packet sent during the handshake
 
     def connection_made(self, transport):
         self.transport = transport
+
+    def handle_handshake_error(self):
+        self.handshakeComplete = False
+        self.state = 0
 
     def data_received(self, data):
         logger.debug("{} POOP received a buffer of size {}".format(self._mode, len(data)))
@@ -207,7 +205,7 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                 if isinstance(pkt, PoopHandshakePacket):
                     logger.debug('{} side packet received:\nsyn: {}\nack: {}\nstatus: {}\nerror: {}'.format(self._mode, pkt.syn, pkt.ack, pkt.status, pkt.error))
                     # should receive syn = X
-                    if self.state==0 and pkt.status==PoopHandshakePacket.NOT_STARTED and is_set(pkt.syn):
+                    if self.state==0 and pkt.status==PoopHandshakePacket.NOT_STARTED and is_set(pkt.syn) and not is_set(pkt.error):
                         self.ack = pkt.syn
                         self.syn = random.randint(0, MAX_UINT32)
                         p = PoopHandshakePacket(status=PoopHandshakePacket.SUCCESS)
@@ -218,7 +216,7 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                         logger.debug('{} side sending packet:\nsyn: {}\nack: {}\nstatus: {}\nerror: {}'.format(self._mode, p.syn, p.ack, p.status, p.error))
                         self.transport.write(p.__serialize__())
                     # should receive syn = (X+1)mod2^32 and ack = (Y+1)mod2^32
-                    elif self.state==1 and pkt.status==PoopHandshakePacket.SUCCESS and is_set(pkt.syn, pkt.ack):
+                    elif self.state==1 and pkt.status==PoopHandshakePacket.SUCCESS and is_set(pkt.syn, pkt.ack) and not is_set(pkt.error):
                         # if handshake successful
                         if pkt.ack == increment_mod(self.syn) and pkt.syn == increment_mod(self.ack):
                             logger.debug('{} side setting handshakeComplete to True'.format(self._mode))
@@ -230,15 +228,38 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                             higher_transport.setSeq(self.syn)
                             self.higherProtocol().connection_made(higher_transport)
                         else:
-                            # TODO error
+                            # TODO error: What should be done if the error is noticed by the server side
                             # ack != self.syn + 1 or syn != self.ack + 1
-                            pass
+                            self.handle_handshake_error()
+                            p = PoopHandshakePacket(status=PoopHandshakePacket.ERROR)
+                            p.error = 'Server: ack != self.syn + 1 or syn != self.ack + 1'
+                            logger.debug(
+                                '{} side sending packet:\nsyn: {}\nack: {}\nstatus: {}\nerror: {}'.format(self._mode,
+                                                                                                          p.syn,
+                                                                                                          p.ack,
+                                                                                                          p.status,
+                                                                                                          p.error))
+                            self.transport.write(p.__serialize__())
+                    elif pkt.status == PoopHandshakePacket.ERROR:
+                        logger.debug('Server: An error packet was received from the client: ' + str(pkt.error))
+                        self.handle_handshake_error()
+                        # TODO error: What should be done if the client has identified the error and sent the server an error packet
+
                     else:
-                        # TODO error
+                        # TODO error: What should be done if the error is noticed by the server side
                         # invalid state and PoopHandshakePacket.status combination
-                        pass
+                        self.handle_handshake_error()
+                        p = PoopHandshakePacket(status=PoopHandshakePacket.ERROR)
+                        p.error = 'Server: invalid state and PoopHandshakePacket.status combination'
+                        logger.debug(
+                            '{} side sending packet:\nsyn: {}\nack: {}\nstatus: {}\nerror: {}'.format(self._mode,
+                                                                                                      p.syn,
+                                                                                                      p.ack,
+                                                                                                      p.status,
+                                                                                                      p.error))
+                        self.transport.write(p.__serialize__())
                 else:
-                    # TODO error
+                    # TODO error: What should be done if the error is noticed by the server side
                     # not the PoopHandshakePacket
                     """
                     if we want to retry the whole handshake on an error, we need to:
@@ -248,7 +269,16 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                     send error packet?
                     maybe other things I'm forgetting?
                     """
-                    pass
+                    self.handle_handshake_error()
+                    p = PoopHandshakePacket(status=PoopHandshakePacket.ERROR)
+                    p.error = 'Server: During handshake a non-handshake packet is being sent'
+                    logger.debug(
+                        '{} side sending packet:\nsyn: {}\nack: {}\nstatus: {}\nerror: {}'.format(self._mode,
+                                                                                                  p.syn,
+                                                                                                  p.ack,
+                                                                                                  p.status,
+                                                                                                  p.error))
+                    self.transport.write(p.__serialize__())
 
     def connection_lost(self, exc):
         logger.debug("{} POOP connection lost. Shutting down higher layer.".format(self._mode))

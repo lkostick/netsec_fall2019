@@ -1,5 +1,6 @@
 from playground.network.packet.fieldtypes import UINT8, UINT32, STRING, BUFFER
 from playground.network.packet.fieldtypes.attributes import Optional
+from playground.network.packet import PacketType
 
 
 class PoopPacketType(PacketType):
@@ -31,4 +32,3 @@ class PoopDataPacket(PoopPacketType):
         ("seq", UINT32),
         ("data", BUFFER)
     ]
-
