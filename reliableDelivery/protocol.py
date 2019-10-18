@@ -103,6 +103,7 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                     logger.debug('{} side checking {} == {}'.format(self._mode, pkt.seq, increment_mod(self.ack)))
                     if pkt.seq == increment_mod(self.ack):
                         logger.debug('{} side setting ack to {}'.format(self._mode, increment_mod(self.ack)))
+                        # update ack for next packet
                         self.ack = increment_mod(self.ack)
                         self.higherProtocol().data_received(pkt.data)
                     else:
@@ -181,9 +182,6 @@ class PoopHandshakeServerProtocol(StackingProtocol):
         logger.debug("{} POOP current state: {}".format(self._mode, self.state))
         self.deserializer.update(data)
         if self.handshakeComplete:
-            # logger.debug("{} mode, data: {}".format(self._mode, data))
-            # self.higherProtocol().data_received(data)
-            # TODO do something
             for pkt in self.deserializer.nextPackets():
                 if isinstance(pkt, PoopDataPacket):
                     logger.debug('{} side packet received:\nseq: {}'.format(self._mode, pkt.seq))
@@ -191,6 +189,7 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                     logger.debug('{} side checking {} == {}'.format(self._mode, pkt.seq, increment_mod(self.ack)))
                     if pkt.seq == increment_mod(self.ack):
                         logger.debug('{} side setting ack to {}'.format(self._mode, increment_mod(self.ack)))
+                        # update ack for next packet
                         self.ack = increment_mod(self.ack)
                         self.higherProtocol().data_received(pkt.data)
                     else:
