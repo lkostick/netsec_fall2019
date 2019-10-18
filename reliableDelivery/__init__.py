@@ -1,7 +1,9 @@
 import playground
-from .protocol import HandshakeClientFactory, HandshakeServerFactory
+from .protocol import PoopHandshakeClientFactory, PoopHandshakeServerFactory
 
-passthroughConnector = playground.Connector(protocolStack=(
-    HandshakeClientFactory(),
-    HandshakeServerFactory()))
-playground.setConnector("handshake", passthroughConnector)
+poopConnector = playground.Connector(protocolStack=(
+    PoopHandshakeClientFactory(),
+    PoopHandshakeServerFactory()))
+playground.setConnector("handshake", poopConnector)
+playground.setConnector("poop", poopConnector)
+playground.setConnector("POOP", poopConnector)
