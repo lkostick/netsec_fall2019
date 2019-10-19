@@ -29,6 +29,7 @@ class PoopDataPacket(PoopPacketType):
     DEFINITION_VERSION = "1.0"
 
     FIELDS = [
-        ("seq", UINT32),
-        ("data", BUFFER)
+        ("seq", UINT32({Optional: True})),
+        ("ack", UINT32({Optional: True})),
+        ("data", BUFFER({Optional: True}))
     ]
