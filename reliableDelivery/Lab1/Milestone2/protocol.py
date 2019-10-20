@@ -41,7 +41,7 @@ class PoopTransport(StackingTransport):
         # self.seq = increment_mod(self.seq)
         logger.debug('{} side PoopTransport.write() data: {}'.format(self._mode, data))
         p = PoopDataPacket()
-        p.seq = self.seq
+        p.seq = self.send_seq
         p.data = data
         self.lowerTransport().write(p.__serialize__())
         # self.seq = increment_mod(self.seq)
