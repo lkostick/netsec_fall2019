@@ -21,20 +21,27 @@ def increment_mod(uint32):
 
 
 class PoopTransport(StackingTransport):
+
+    def __init__(self, transport):
+        super().__init__(transport)
+        self.send_seq = None
+        self.rcv_seq = None
+
     def setMode(self, mode):
         logger.debug('setting PoopTransport mode to {}'.format(mode))
         self._mode = mode
 
     # ALWAYS CALL setMode() BEFORE setSeq() !!!!!
-    def setSeq(self, seq):
+    def setSeq(self, send_seq, rcv_seq):
         logger.debug('setting {} side PoopTransport init seq to {}'.format(self._mode, seq))
-        self.seq = seq
+        self.send_seq = send_seq
+        self.rcv_seq = rcv_seq
 
     def write(self, data):
         # self.seq = increment_mod(self.seq)
         logger.debug('{} side PoopTransport.write() data: {}'.format(self._mode, data))
         p = PoopDataPacket()
-        # p.seq = self.seq
+        p.seq = self.seq
         p.data = data
         self.lowerTransport().write(p.__serialize__())
         # self.seq = increment_mod(self.seq)
@@ -49,9 +56,7 @@ class PoopHandshakeClientProtocol(StackingProtocol):
         self.ack = None     # will be used to check sequence of incoming packets
         self.handshakeComplete = False
         self.state = 0      # increments by 1 for each packet sent during the handshake
-        self.send_seq = None
-        self.rcv_seq = None
-
+        self.transport_protocol = None
     def connection_made(self, transport):
         self.transport = transport
         self.syn = random.randint(0, MAX_UINT32) # self.syn = X
@@ -76,18 +81,18 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                 if isinstance(pkt, PoopDataPacket):
                     logger.debug('{} side packet received:\nseq: {}\nack: {}\ndata: {}'.format(self._mode, pkt.seq, pkt.ack, pkt.data))
                     if is_set(pkt.data) and not is_set(pkt.seq) and not is_set(pkt.ack): # transport.write() called from higher layer
-                        pkt.seq = self.send_seq
-                        logger.debug('{} side setting pkt.seq to self.send_seq = {}'.format(self._mode, self.send_seq))
+                        pkt.seq = self.transport_protocol.send_seq
+                        logger.debug('{} side setting pkt.seq to send_seq = {}'.format(self._mode, self.transport_protocol.send_seq))
                         self.transport.write(pkt.__serialize__())
                         # self.seq = increment_mod(self.seq)
                         pass
                     elif is_set(pkt.data, pkt.seq) and not is_set(pkt.ack):
                         # do check if seq number matches
-                        logger.debug('{} side checking {} == {}'.format(self._mode, pkt.seq, increment_mod(self.rcv_seq)))
-                        if pkt.seq == increment_mod(self.rcv_seq):
-                            self.rcv_seq = increment_mod(self.rcv_seq)
-                            logger.debug('{} side setting p.ack to self.rcv_seq = {}'.format(self._mode, self.rcv_seq))
-                            p = PoopDataPacket(ack=self.rcv_seq)
+                        logger.debug('{} side checking {} == {}'.format(self._mode, pkt.seq, increment_mod(self.transport_protocol.rcv_seq)))
+                        if pkt.seq == increment_mod(self.transport_protocol.rcv_seq):
+                            self.transport_protocol.rcv_seq = increment_mod(self.transport_protocol.rcv_seq)
+                            logger.debug('{} side setting p.ack to rcv_seq = {}'.format(self._mode, self.transport_protocol.rcv_seq))
+                            p = PoopDataPacket(ack=self.transport_protocol.rcv_seq)
                             self.higherProtocol().data_received(pkt.data)
                             self.transport.write(p.__serialize__())
                             # self.higherProtocol().data_received(pkt.data)
@@ -96,9 +101,9 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                             pass
                         
                     elif is_set(pkt.ack) and not is_set(pkt.seq) and not is_set(pkt.data):
-                        logger.debug('{} side checking {} == {}'.format(self._mode, pkt.ack, self.send_seq))
-                        if pkt.ack == self.send_seq:
-                            self.send_seq = increment_mod(self.send_seq)
+                        logger.debug('{} side checking {} == {}'.format(self._mode, pkt.ack, self.transport_protocol.send_seq))
+                        if pkt.ack == self.transport_protocol.send_seq:
+                            self.transport_protocol.send_seq = increment_mod(self.transport_protocol.send_seq)
 
                         else:
                             # TODO Error
@@ -148,15 +153,20 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                             logger.debug('{} side setting handshakeComplete to True'.format(self._mode))
                             self.handshakeComplete = True
                             # should this go back in connection_made() ?
-                            logger.debug('{} side calling self.higherProtocol().connection_made()'.format(self._mode))
                             higher_transport = PoopTransport(self.transport)
                             higher_transport.setMode(self._mode)
+                            # send_seq = Y+1
+                            # rcv_seq = X+1
+                            send_seq = increment_mod(self.ack)
+                            rcv_seq = self.syn
+                            logger.debug('{} side setting send_seq to {} and rcv_seq to {}'.format(self._mode,
+                                                                                                             send_seq,
+                                                                                                             rcv_seq))
+                            higher_transport.setSeq(send_seq=send_seq, rcv_seq=rcv_seq)
+                            self.transport_protocol = higher_transport
+                            logger.debug('{} side calling self.higherProtocol().connection_made()'.format(self._mode))
                             # higher_transport.setSeq(pkt.syn) # c_t.seq = Y
-                            
-                            self.send_seq = increment_mod(self.ack) # send_seq = Y+1
-                            self.rcv_seq = self.syn # rcv_seq = X+1
-                            logger.debug('{} side setting self.send_seq to {} and self.rcv_seq to {}'.format(self._mode, self.send_seq, self.rcv_seq))
-                            self.higherProtocol().connection_made(higher_transport)
+                            self.higherProtocol().connection_made(self.transport_protocol)
                         else:
                             # TODO error: What should be done if the error is noticed by the client side
                             self.handle_handshake_error()
@@ -215,8 +225,7 @@ class PoopHandshakeServerProtocol(StackingProtocol):
         self.ack = None     # will be used to sequence of incoming packets
         self.handshakeComplete = False
         self.state = 0      # increments by 1 for each packet sent during the handshake
-        self.send_seq = None
-        self.rcv_seq = None
+        self.transport_protocol = None
 
     def connection_made(self, transport):
         self.transport = transport
@@ -234,18 +243,18 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                 if isinstance(pkt, PoopDataPacket):
                     logger.debug('{} side packet received:\nseq: {}\nack: {}\ndata: {}'.format(self._mode, pkt.seq, pkt.ack, pkt.data))
                     if is_set(pkt.data) and not is_set(pkt.seq) and not is_set(pkt.ack): # transport.write() called from higher layer
-                        pkt.seq = self.send_seq
-                        logger.debug('{} side setting pkt.seq to self.send_seq = {}'.format(self._mode, self.send_seq))
+                        pkt.seq = self.transport_protocol.send_seq
+                        logger.debug('{} side setting pkt.seq to send_seq = {}'.format(self._mode, self.transport_protocol.send_seq))
                         self.transport.write(pkt.__serialize__())
                         # self.seq = increment_mod(self.seq)
                         pass
                     elif is_set(pkt.data, pkt.seq) and not is_set(pkt.ack):
                         # do check if seq number matches
-                        logger.debug('{} side checking {} == {}'.format(self._mode, pkt.seq, increment_mod(self.rcv_seq)))
-                        if pkt.seq == increment_mod(self.rcv_seq):
-                            self.rcv_seq = increment_mod(self.rcv_seq)
-                            logger.debug('{} side setting p.ack to self.rcv_seq = {}'.format(self._mode, self.rcv_seq))
-                            p = PoopDataPacket(ack=self.rcv_seq)
+                        logger.debug('{} side checking {} == {}'.format(self._mode, pkt.seq, increment_mod(self.transport_protocol.rcv_seq)))
+                        if pkt.seq == increment_mod(self.transport_protocol.rcv_seq):
+                            self.transport_protocol.rcv_seq = increment_mod(self.transport_protocol.rcv_seq)
+                            logger.debug('{} side setting p.ack to rcv_seq = {}'.format(self._mode, self.transport_protocol.rcv_seq))
+                            p = PoopDataPacket(ack=self.transport_protocol.rcv_seq)
                             self.higherProtocol().data_received(pkt.data)
                             self.transport.write(p.__serialize__())
                             # self.higherProtocol().data_received(pkt.data)
@@ -254,10 +263,10 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                             pass
                         
                     elif is_set(pkt.ack) and not is_set(pkt.seq) and not is_set(pkt.data):
-                        logger.debug('{} side checking {} == {}'.format(self._mode, pkt.ack, self.send_seq))
-                        if pkt.ack == self.send_seq:
+                        logger.debug('{} side checking {} == {}'.format(self._mode, pkt.ack, self.transport_protocol.send_seq))
+                        if pkt.ack == self.transport_protocol.send_seq:
 
-                            self.send_seq = increment_mod(self.send_seq)
+                            self.transport_protocol.send_seq = increment_mod(self.transport_protocol.send_seq)
 
                         else:
                             # TODO Error
@@ -307,16 +316,21 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                             self.handshakeComplete = True
                             self.ack = pkt.syn
                             # should this go back in connection_made() ?
-                            logger.debug('{} side calling self.higherProtocol().connection_made()'.format(self._mode))
+
                             higher_transport = PoopTransport(self.transport)
                             higher_transport.setMode(self._mode)
-                            # higher_transport.setSeq(pkt.syn) # s_t = X+1
-                            #self.seq = pkt.syn # s_t = X+1
-                            
-                            self.send_seq = increment_mod(self.ack) # self.send_seq = X+1
-                            self.rcv_seq = self.syn # self.rcv_seq = Y
-                            logger.debug('{} side setting self.send_seq to {} and self.rcv_seq to {}'.format(self._mode, self.send_seq, self.rcv_seq))
-                            self.higherProtocol().connection_made(higher_transport)
+                            # send_seq = X+1
+                            # rcv_seq = Y
+                            send_seq = increment_mod(self.ack)
+                            rcv_seq = self.syn
+                            logger.debug('{} side setting send_seq to {} and rcv_seq to {}'.format(self._mode,
+                                                                                                             send_seq,
+                                                                                                             rcv_seq))
+                            higher_transport.setSeq(send_seq=send_seq, rcv_seq=rcv_seq)
+                            self.transport_protocol = higher_transport
+                            logger.debug('{} side calling self.higherProtocol().connection_made()'.format(self._mode))
+                            # higher_transport.setSeq(pkt.syn) # c_t.seq = Y
+                            self.higherProtocol().connection_made(self.transport_protocol)
                         else:
                             # TODO error: What should be done if the error is noticed by the server side
                             # ack != self.syn + 1 or syn != self.ack + 1
