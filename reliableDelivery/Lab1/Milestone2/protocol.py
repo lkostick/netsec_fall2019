@@ -33,7 +33,6 @@ class PoopTransport(StackingTransport):
 
     # ALWAYS CALL setMode() BEFORE setSeq() !!!!!
     def setSeq(self, send_seq, rcv_seq):
-        logger.debug('setting {} side PoopTransport init seq to {}'.format(self._mode, seq))
         self.send_seq = send_seq
         self.rcv_seq = rcv_seq
 
