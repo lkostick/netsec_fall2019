@@ -17,8 +17,8 @@ class PoopHandshakePacket(PoopPacketType):
     ERROR = 2
 
     FIELDS = [
-        ("SYN", UINT32({Optional: True})),
-        ("ACK", UINT32({Optional: True})),
+        ("syn", UINT32({Optional: True})),
+        ("ack", UINT32({Optional: True})),
         ("status", UINT8),
         ("error", STRING({Optional: True}))
     ]
