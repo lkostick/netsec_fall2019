@@ -17,8 +17,8 @@ class PoopHandshakePacket(PoopPacketType):
     ERROR = 2
 
     FIELDS = [
-        ("syn", UINT32({Optional: True})),
-        ("ack", UINT32({Optional: True})),
+        ("SYN", UINT32({Optional: True})),
+        ("ACK", UINT32({Optional: True})),
         ("status", UINT8),
         ("error", STRING({Optional: True}))
     ]
@@ -29,7 +29,7 @@ class PoopDataPacket(PoopPacketType):
     DEFINITION_VERSION = "1.0"
 
     FIELDS = [
-        ("seq", UINT32({Optional: True})),
-        ("ack", UINT32({Optional: True})),
-        ("data", BUFFER({Optional: True}))
+        ("data", BUFFER),
+        ("seq", UINT32),
+        ("datahash", UINT32),
     ]
