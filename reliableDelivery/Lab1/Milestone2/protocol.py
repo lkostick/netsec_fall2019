@@ -3,7 +3,7 @@ from playground.network.packet import PacketType, FIELD_NOT_SET
 import logging
 import random
 from .packets import *
-import math
+import math,binascii
 
 logger = logging.getLogger("playground.__connector__." + __name__)
 # max value a UINT32 can store
@@ -19,6 +19,8 @@ def is_set(*fields):
 def increment_mod(uint32):
     return (uint32 + 1) % (MAX_UINT32 + 1)
 
+def getHash(data):
+    return binascii.crc32(data) & 0xffffffff
 
 class PoopTransport(StackingTransport):
 
@@ -39,9 +41,11 @@ class PoopTransport(StackingTransport):
     def write(self, data):
         # self.seq = increment_mod(self.seq)
         logger.debug('{} side PoopTransport.write() data: {}'.format(self._mode, data))
-        p = PoopDataPacket()
-        p.seq = self.send_seq
-        p.data = data
+        #p = PoopDataPacket()
+        #p.seq = self.send_seq
+        #p.data = data
+        #p.datahash = getHash(data)
+        p = PoopDataPacket(seq=self.seng_seq, data=data, datahash=getHash(data))
         self.lowerTransport().write(p.__serialize__())
         # self.seq = increment_mod(self.seq)
 
@@ -78,58 +82,22 @@ class PoopHandshakeClientProtocol(StackingProtocol):
             logger.debug("{} mode, data: {}".format(self._mode, data))
             for pkt in self.deserializer.nextPackets():
                 if isinstance(pkt, PoopDataPacket):
-                    logger.debug('{} side packet received:\nseq: {}\nack: {}\ndata: {}'.format(self._mode, pkt.seq, pkt.ack, pkt.data))
-                    if is_set(pkt.data) and not is_set(pkt.seq) and not is_set(pkt.ack): # transport.write() called from higher layer
-                        pkt.seq = self.transport_protocol.send_seq
-                        logger.debug('{} side setting pkt.seq to send_seq = {}'.format(self._mode, self.transport_protocol.send_seq))
-                        self.transport.write(pkt.__serialize__())
-                        # self.seq = increment_mod(self.seq)
-                        pass
-                    elif is_set(pkt.data, pkt.seq) and not is_set(pkt.ack):
-                        # do check if seq number matches
-                        logger.debug('{} side checking {} == {}'.format(self._mode, pkt.seq, increment_mod(self.transport_protocol.rcv_seq)))
-                        if pkt.seq == increment_mod(self.transport_protocol.rcv_seq):
+                    logger.debug(f"{self._mode} side packet recieved:\nseq:{pkt.seq}\nhash:{pkt.datahash}\ndata:{pkt.data}\n") 
+                    # do check if seq number matches
+                    logger.debug('{} side checking {} == {}'.format(self._mode, pkt.seq, increment_mod(self.transport_protocol.rcv_seq)))
+                    if pkt.seq == increment_mod(self.transport_protocol.rcv_seq):
+                        if pkt.datahash == getHash(pkt.data):
                             self.transport_protocol.rcv_seq = increment_mod(self.transport_protocol.rcv_seq)
                             logger.debug('{} side setting p.ack to rcv_seq = {}'.format(self._mode, self.transport_protocol.rcv_seq))
-                            p = PoopDataPacket(ack=self.transport_protocol.rcv_seq)
+                            #p = PoopDataPacket(ack=self.transport_protocol.rcv_seq)
                             self.higherProtocol().data_received(pkt.data)
-                            self.transport.write(p.__serialize__())
+                            #self.transport.write(p.__serialize__())
                             # self.higherProtocol().data_received(pkt.data)
-                        else:
-                            # TODO error
-                            pass
-                        
-                    elif is_set(pkt.ack) and not is_set(pkt.seq) and not is_set(pkt.data):
-                        logger.debug('{} side checking {} == {}'.format(self._mode, pkt.ack, self.transport_protocol.send_seq))
-                        if pkt.ack == self.transport_protocol.send_seq:
-                            self.transport_protocol.send_seq = increment_mod(self.transport_protocol.send_seq)
-
-                        else:
-                            # TODO Error
+                        else: #TODO data corruption error
                             pass
                     else:
                         # TODO error
                         pass
-
-                    """
-                    Do reliable delivery before
-                    
-                    do 
-
-
-                    self.transport.write(pkt.__serialize__()) <-- pkt is a PoopDataPacket
-                    """
-                    # check if packets in order
-                    # logger.debug('{} side checking {} == {}'.format(self._mode, pkt.seq, increment_mod(self.ack)))
-                    # if pkt.seq == increment_mod(self.ack):
-                    #     logger.debug('{} side setting ack to {}'.format(self._mode, increment_mod(self.ack)))
-                    #     # update ack for next packet
-                    #     self.ack = increment_mod(self.ack)
-                    #     self.higherProtocol().data_received(pkt.data)
-                    # else:
-                    #     # TODO error
-                    #     # got a seq number that doesnt match self.ack + 1
-                    #     pass
                 else:
                     # TODO error
                     # got something other than a PoopDataPacket
