@@ -1,0 +1,40 @@
+HANDSHAKE
+what do to during an error?
+	timeout/reset?
+
+DATA TRANSMISSION
+duplex & acks
+	each side keeps track of the next expected packet seq number
+
+Max Transmission Unit (size of buffer)
+	drop if too big?
+	split into multiple packets with buffersize<=MTU?
+
+Window size (how many packets to send before getting an ack)
+
+
+
+Any packet with an optional field will work with a packet with the same definitions and fields but without that optional field
+
+
+SHUTDOWN
+implicit (application layer knows all data sent/received)
+v
+explicit (explicit quit/exit message)
+
+
+From Dr. Nielson:
+	We just have to send the correct data up. The application layer will deal with interpreting with the data, if its not complete, etc.
+	For example, an HTTP request ends to /r/n or whatever it was. If the request is incomplete, the application layer will wait until it gets the complete request before sending it.
+		However, playground also deals with this issue for us. When calling deserializer.update(data), as explained once before, the deserializer waits until it knows it got the complete packet before giving out something through deserializer.nextPackets()
+
+	The protocol should somehow be able to talk to the transport, for example:
+		resend requests
+		storing data pushed down from a write() into a send_buffer
+
+
+
+REMINDERS:
+data_received() is always UP the protocol stack
+
+transport.write() is always DOWN the protocol stack
