@@ -1,3 +1,11 @@
+ONE CONSIDERATION/SUGGESTION FROM DR NIELSON ABOUT DATA CORRECTNESS
+Dr. Nielson suggested that hashing just the data field might not be good. Maybe try hashing the whole packet? For example:
+	p = PoopDataPacket(seq=seq, ack=ack, data=data)
+	p.hash = some default value
+	pb = p.__serialize__()
+	phash = hash(pb)
+	p.hash = phash
+
 HANDSHAKE
 what do to during an error?
 	timeout/reset?
