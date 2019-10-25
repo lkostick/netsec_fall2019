@@ -28,6 +28,8 @@ class PoopDataPacket(PoopPacketType):
     DEFINITION_IDENTIFIER = "poop.datapacket"
     DEFINITION_VERSION = "1.0"
 
+    DEFAULT_DATAHASH = 0
+
     FIELDS = [
         ("data", BUFFER),
         ("seq", UINT32),
