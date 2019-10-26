@@ -4,27 +4,27 @@ import logging
 import random
 from .packets import *
 import math, binascii
-from hashlib import sha256
+from collections import deque
 
 logger = logging.getLogger("playground.__connector__." + __name__)
 
 # max value a UINT32 can store
 MAX_UINT32 = int(math.pow(2,32) - 1)
 
-# Max Transmission Unit (max length of the data buffer)
-MTU = 2048
+# Max Transmission Unit (max length of the data field)
+MTU = 32
 
-
+# Returns True if all fields are set, otherwise False
 def is_set(*fields):
     for field in fields:
         if field == FIELD_NOT_SET:
             return False
     return True
 
-# untested yet....
+# Returns True if all fields are not set, otherwise False
 def not_set(*fields):
     for field in fields:
-        if field != FIELD_NOT_SET: # if a single field is set
+        if field != FIELD_NOT_SET:
             return False
     return True
 
@@ -52,6 +52,13 @@ class PoopTransport(StackingTransport):
         self.send_seq = send_seq
         self.rcv_seq = rcv_seq
 
+    # def setDataBuf(self, dataq):
+    #     self.dataq = dataq # collections.deque
+
+    # def setSendBuf(self, send_buf):
+    #     self.send_buf = send_buf # dictionary, K=seq V=packet
+
+
     def write(self, data):
         # datahash = getHash(data)
         data_len = len(data)
@@ -62,20 +69,29 @@ class PoopTransport(StackingTransport):
         logger.debug('{} side n = {}'.format(self._mode, n))
         for _ in range(n):
             p_data = data[i:min(j, data_len)]
+            # logger.debug('{} side transport, iteration {}, appending to dataq data chunk of size {}'.format(self._mode, _, len(p_data)))
+            # self.dataq.append(p_data)
+
             p = PoopDataPacket(seq=self.send_seq, data=p_data, datahash=PoopDataPacket.DEFAULT_DATAHASH)
             datahash = getHash(p.__serialize__())
             p.datahash = datahash
             logger.debug('{} side PoopTransport.write(). Info:\n'
                          'seq: {}\n'
                          'data: {}\n'
-                         'datahash: {}\n'.format(self._mode, self.send_seq, data, datahash))
+                         'datahash: {}\n'.format(self._mode, self.send_seq, p_data, datahash))
             # p = PoopDataPacket(seq=self.send_seq, data=data, datahash=datahash)
+            logger.debug('{} side writing data = {}'.format(self._mode, p_data))
             self.lowerTransport().write(p.__serialize__())
+
             logger.debug('{} side setting send_seq = {}'.format(self._mode, self.send_seq))
             self.send_seq = increment_mod(self.send_seq)
             i += MTU
             j += MTU
             logger.debug('{} side incrementing i and j to {} and {}'.format(self._mode, i, j))
+
+
+    def write_buf(self):
+        pass
 
 
 class PoopHandshakeClientProtocol(StackingProtocol):
@@ -88,6 +104,8 @@ class PoopHandshakeClientProtocol(StackingProtocol):
         self.handshakeComplete = False
         self.state = 0      # increments by 1 for each packet sent during the handshake
         self.transport_protocol = None
+        self.dataq = deque()
+        
 
     def connection_made(self, transport):
         self.transport = transport
@@ -117,9 +135,10 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                 if isinstance(pkt, PoopDataPacket):
                     logger.debug("{} side packet recieved: Info:\n"
                                  "seq: {}\n"
+                                 "ack: {}\n"
                                  "data: {}\n"
-                                 "datahash: {}\n".format(self._mode, pkt.seq, pkt.data, pkt.datahash))
-                    if is_set(pkt.seq, pkt.data, pkt.datahash):
+                                 "datahash: {}\n".format(self._mode, pkt.seq, pkt.ack, pkt.data, pkt.datahash))
+                    if not_set(pkt.ack) and is_set(pkt.seq, pkt.data):
                         # do check if seq number matches
                         logger.debug('{} side checking {} == {}'.format(self._mode, pkt.seq, self.transport_protocol.rcv_seq))
                         if pkt.seq == self.transport_protocol.rcv_seq:
@@ -132,8 +151,13 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                             logger.debug('{} side checking {} == {}'.format(self._mode, pkt_datahash, gen_datahash))
                             # if pkt.datahash == datahash:
                             if pkt_datahash == gen_datahash:
-                                self.transport_protocol.rcv_seq = increment_mod(self.transport_protocol.rcv_seq)
+                                logger.debug('{} side sending ack = {}'.format(self._mode, self.transport_protocol.rcv_seq))
+                                ack_p = PoopDataPacket(ack=self.transport_protocol.rcv_seq)
+                                ack_p.datahash = PoopDataPacket.DEFAULT_DATAHASH
+                                ack_p.datahash = getHash(ack_p.__serialize__())
+                                self.transport.write(ack_p.__serialize__())
                                 logger.debug('{} side setting rcv_seq = {}'.format(self._mode, self.transport_protocol.rcv_seq))
+                                self.transport_protocol.rcv_seq = increment_mod(self.transport_protocol.rcv_seq)
                                 self.higherProtocol().data_received(pkt.data)
                             else:
                                 error = 'data corruption error: pkt.datahash != getHash(pkt.data)'
@@ -141,10 +165,20 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                                     '{} side ERROR = {}'.format(self._mode, error))
                                 # TODO
                         else:
-                            error = 'pkt.seq != increment_mod(self.transport_protocol.rcv_seq)'
+                            error = 'pkt.seq != self.transport_protocol.rcv_seq'
                             logger.debug(
                                 '{} side ERROR = {}'.format(self._mode, error))
                             # TODO error
+                    elif is_set(pkt.ack):
+                        pkt_datahash = pkt.datahash # received datahash
+                        pkt.datahash = PoopDataPacket.DEFAULT_DATAHASH
+                        gen_datahash = getHash(pkt.__serialize__()) # generated datahash
+
+                        # logger.debug('{} side checking {} == {}'.format(self._mode, pkt.datahash, datahash))
+                        logger.debug('{} side checking {} == {}'.format(self._mode, pkt_datahash, gen_datahash))
+                        # if pkt.datahash == datahash:
+                        if pkt_datahash == gen_datahash:
+                            logger.debug('{} side received ack = {}'.format(self._mode, pkt.ack))
                     else:
                         error = 'Either pkt.seq, pkt.data or pkt.datahash are not set'
                         logger.debug(
@@ -183,6 +217,7 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                                                                                                              send_seq,
                                                                                                              rcv_seq))
                             higher_transport.setSeq(send_seq=send_seq, rcv_seq=rcv_seq)
+                            # higher_transport.setDataBuf(self.dataq)
                             self.transport_protocol = higher_transport
                             logger.debug('{} side calling self.higherProtocol().connection_made()'.format(self._mode))
                             # higher_transport.setSeq(pkt.syn) # c_t.seq = Y
@@ -235,6 +270,7 @@ class PoopHandshakeServerProtocol(StackingProtocol):
         self.handshakeComplete = False
         self.state = 0      # increments by 1 for each packet sent during the handshake
         self.transport_protocol = None
+        self.dataq = deque()
 
     def connection_made(self, transport):
         self.transport = transport
@@ -252,9 +288,10 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                 if isinstance(pkt, PoopDataPacket):
                     logger.debug("{} side packet recieved: Info:\n"
                                  "seq: {}\n"
+                                 "ack: {}\n"
                                  "data: {}\n"
-                                 "datahash: {}\n".format(self._mode, pkt.seq, pkt.data, pkt.datahash))
-                    if is_set(pkt.data, pkt.seq, pkt.datahash):
+                                 "datahash: {}\n".format(self._mode, pkt.seq, pkt.ack, pkt.data, pkt.datahash))
+                    if not_set(pkt.ack) and is_set(pkt.seq, pkt.data):
                         # do check if seq number matches
                         logger.debug('{} side checking {} == {}'.format(self._mode, pkt.seq, self.transport_protocol.rcv_seq))
                         if pkt.seq == self.transport_protocol.rcv_seq:
@@ -267,8 +304,13 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                             logger.debug('{} side checking {} == {}'.format(self._mode, pkt_datahash, gen_datahash))
                             # if pkt.datahash == datahash:
                             if pkt_datahash == gen_datahash:
+                                logger.debug('{} side sending ack = {}'.format(self._mode, self.transport_protocol.rcv_seq))
+                                ack_p = PoopDataPacket(ack=self.transport_protocol.rcv_seq)
+                                ack_p.datahash = PoopDataPacket.DEFAULT_DATAHASH
+                                ack_p.datahash = getHash(ack_p.__serialize__())
+                                self.transport.write(ack_p.__serialize__())
+                                logger.debug('{} side setting rcv_seq = {}'.format(self._mode, self.transport_protocol.rcv_seq))
                                 self.transport_protocol.rcv_seq = increment_mod(self.transport_protocol.rcv_seq)
-                                logger.debug('{} side setting p.ack to rcv_seq = {}'.format(self._mode, self.transport_protocol.rcv_seq))
                                 self.higherProtocol().data_received(pkt.data)
                             else:
                                 error = 'data corruption error: pkt.datahash != getHash(pkt.data)'
@@ -276,10 +318,20 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                                     '{} side ERROR = {}'.format(self._mode, error))
                                 # TODO
                         else:
-                            error = 'pkt.seq != increment_mod(self.transport_protocol.rcv_seq)'
+                            error = 'pkt.seq != self.transport_protocol.rcv_seq'
                             logger.debug(
                                 '{} side ERROR = {}'.format(self._mode, error))
                             # TODO error
+                    elif is_set(pkt.ack):
+                        pkt_datahash = pkt.datahash # received datahash
+                        pkt.datahash = PoopDataPacket.DEFAULT_DATAHASH
+                        gen_datahash = getHash(pkt.__serialize__()) # generated datahash
+
+                        # logger.debug('{} side checking {} == {}'.format(self._mode, pkt.datahash, datahash))
+                        logger.debug('{} side checking {} == {}'.format(self._mode, pkt_datahash, gen_datahash))
+                        # if pkt.datahash == datahash:
+                        if pkt_datahash == gen_datahash:
+                            logger.debug('{} side received ack = {}'.format(self._mode, pkt.ack))
                     else:
                         error = 'Either pkt.seq, pkt.data or pkt.datahash are not set'
                         logger.debug(
@@ -325,6 +377,7 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                                                                                                              send_seq,
                                                                                                              rcv_seq))
                             higher_transport.setSeq(send_seq=send_seq, rcv_seq=rcv_seq)
+                            # higher_transport.setDataBuf(self.data_buf)
                             self.transport_protocol = higher_transport
                             logger.debug('{} side calling self.higherProtocol().connection_made()'.format(self._mode))
                             # higher_transport.setSeq(pkt.syn) # c_t.seq = Y

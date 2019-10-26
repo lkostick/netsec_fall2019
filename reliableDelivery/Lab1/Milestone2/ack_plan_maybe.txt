@@ -1,0 +1,42 @@
+Send buffer = send_buf (dictionary where K=seq and V=packet)
+	Although technically a dict has "infinite" size, we want to set it such that the number of items in the send buf is always <=send_window
+
+Data queue  = dataq (collections.deque)
+
+Max size of send_buf = send_window (max number of packets to send, whether for resending or new data chunks)
+
+expected_ack = expected_ack (last acked packet)
+	Initialized to initial seq. Will be comparing recieved acks to expected_ack.
+
+
+information flow
+
+sender app pushes data to sender poop
+
+sender poop sequentially divides data into several chunks of datasize<=MTU (MTU defined by us)
+
+	These sequentially divided chunks are fed to the dataq
+
+Fill/init send_buf
+For k in range(min(size of dataq, open spaces in send_buf))
+	make PDP w/ data, seq, and hash
+	send_buf[seq] = PDP
+
+send packets in send_buf
+
+for each ack
+	if ack == expected_ack:
+		remove send_buf[seq]
+		expected_ack += 1
+	refill send_buf if necessary
+	send send_buf # currently inefficient as fuck but should work.. can implement a receive window and chunk reordering later
+
+
+receiver gets packet
+
+if packet.seq == rcv_seq:
+	send ack = rcv_seq
+	rcv_seq += 1
+	push data up
+else:
+	drop packet
