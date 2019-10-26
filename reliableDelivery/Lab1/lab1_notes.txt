@@ -1,0 +1,88 @@
+
+## DONE
+ONE CONSIDERATION/SUGGESTION FROM DR NIELSON ABOUT DATA CORRECTNESS
+Dr. Nielson suggested that hashing just the data field might not be good. Maybe try hashing the whole packet? For example:
+	p = PoopDataPacket(seq=seq, ack=ack, data=data)
+	p.hash = some default value
+	pb = p.__serialize__()
+	phash = hash(pb)
+	p.hash = phash
+
+HANDSHAKE
+what do to during an error?
+	If client recieves bad syn/ack, send init handshakepacket with new syn (which means server must always be listening for a restart)
+	compute final send_seq/rcv_seq through incrementing rather than grabbed from the received packet in case of packet corruption
+
+	Timeout? When? Why?
+
+DATA TRANSMISSION
+duplex & acks
+	each side keeps track of the next expected packet seq number
+	resending lost/incorrect packets
+		If instanceof(received_packet, PDP):
+			check seq == expected seq number
+			If not:
+				resend last sent ack
+			Else:
+				send ack=received_seq
+				expected_seq += 1
+
+	Timeout? When? Why?
+
+	Extra stuff for later:
+		when sending data, send each packet thrice. The odds of failure (lost/corruption) on all three are much lower, thus less resending
+
+## DONE
+Max Transmission Unit (size of buffer)
+	split into multiple packets with buffersize<=MTU
+
+# Do after basic stuff is implemented. Basic = sending_window <- 1
+Window size (how many packets to send before getting an ack) 
+
+
+
+Any packet with an optional field will work with a packet with the same definitions and fields but without that optional field
+
+
+SHUTDOWN
+implicit (application layer knows all data sent/received)
+v
+explicit (explicit quit/exit message)
+
+What we think should work - Also, timeouts when? where? why?
+Assume A sends FIN
+A sends FIN=current_seq_num
+B compares pkt.FIN == expected_seq_num
+If match:
+	B sends FIN == current_seq_num
+	        ACK == expected_seq_num
+	Then B closes connection
+Else:
+	B saves pkt.FIN
+	B resends last sent ack 
+	Repeat until saved pkt.FIN val == expected_seq_num (in order to ensure that all data that should be delivered has been delivered)
+
+A receives:
+	case FIN/ACK || FIN:
+		close connection
+	case ACK:
+		some packets were not delivered, so resend unacked packets
+	case data:
+		Drop data
+
+
+From Dr. Nielson:
+	We just have to send the correct data up. The application layer will deal with interpreting with the data, if its not complete, etc.
+	For example, an HTTP request ends to /r/n or whatever it was. If the request is incomplete, the application layer will wait until it gets the complete request before sending it.
+		However, playground also deals with this issue for us. When calling deserializer.update(data), as explained once before, the deserializer waits until it knows it got the complete packet before giving out something through deserializer.nextPackets()
+
+	The protocol should somehow be able to talk to the transport, for example:
+		resend requests
+		storing data pushed down from a write() into a send_buffer
+
+
+
+REMINDERS:
+data_received() is always UP the protocol stack
+
+transport.write() is always DOWN the protocol stack

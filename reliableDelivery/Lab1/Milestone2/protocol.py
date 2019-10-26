@@ -209,7 +209,7 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                             # should this go back in connection_made() ?
                             higher_transport = PoopTransport(self.transport)
                             higher_transport.setMode(self._mode)
-                            # send_seq = Y+1
+                            # send_seq = Y
                             # rcv_seq = X+1
                             send_seq = self.ack
                             rcv_seq = self.syn

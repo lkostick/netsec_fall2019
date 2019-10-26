@@ -40,3 +40,4 @@ if packet.seq == rcv_seq:
 	push data up
 else:
 	drop packet
+	resend last ack
