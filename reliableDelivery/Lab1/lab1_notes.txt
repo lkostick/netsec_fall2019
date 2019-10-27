@@ -17,6 +17,7 @@ what do to during an error?
 
 DATA TRANSMISSION
 duplex & acks
+	## DONE..?
 	each side keeps track of the next expected packet seq number
 	resending lost/incorrect packets
 		If instanceof(received_packet, PDP):
@@ -27,6 +28,7 @@ duplex & acks
 				send ack=received_seq
 				expected_seq += 1
 
+	NEED TO DO
 	Timeout? When? Why?
 
 	Extra stuff for later:

@@ -27,7 +27,7 @@ send packets in send_buf
 for each ack
 	if ack == expected_ack:
 		remove send_buf[seq]
-		expected_ack += 1
+		expected_ack += 1 .......... I THINK THIS SHOULD BE DONE ON THE SIDE THAT RECEIVED THE DATA
 	refill send_buf if necessary
 	send send_buf # currently inefficient as fuck but should work.. can implement a receive window and chunk reordering later
 
@@ -40,4 +40,4 @@ if packet.seq == rcv_seq:
 	push data up
 else:
 	drop packet
-	resend last ack
+	resend last ack? ..... MAYBE ONLY DO IF PACKET WAS CORRUPTED? THE SENDER'S SEND_BUF SHOULD BE GUARANTEED TO HAVE THE CORRECT DATA, WHICH MEANS THAT ASSUMING NO PACKETS WERE CORRUPTED OR LOST, THE RECEIVER WILL FIND THE PACKET IT'S LOOKING FOR FROM THE SENDER'S SEND_BUF
