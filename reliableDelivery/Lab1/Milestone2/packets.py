@@ -8,7 +8,19 @@ class PoopPacketType(PacketType):
     DEFINITION_VERSION = "1.0"
 
 
-class PoopHandshakePacket(PoopPacketType):
+class DataPacket(PoopPacketType):
+    DEFINITION_IDENTIFIER = "poop.datapacket"
+    DEFINITION_VERSION = "1.0"
+
+    FIELDS = [
+        ("seq", UINT32),
+        ("hash", UINT32),
+        ("data", BUFFER({Optional: True})),
+        ("ACK", UINT32({Optional: True})),
+    ]
+
+
+class HandshakePacket(PoopPacketType):
     DEFINITION_IDENTIFIER = "poop.handshakepacket"
     DEFINITION_VERSION = "1.0"
 
@@ -17,21 +29,19 @@ class PoopHandshakePacket(PoopPacketType):
     ERROR = 2
 
     FIELDS = [
-        ("syn", UINT32({Optional: True})),
-        ("ack", UINT32({Optional: True})),
         ("status", UINT8),
-        ("error", STRING({Optional: True}))
+        ("SYN", UINT32({Optional: True})),
+        ("ACK", UINT32({Optional: True})),
+        ("error", STRING({Optional: True})),
+        ("last_valid_sequence", UINT32({Optional: True}))
     ]
 
 
-class PoopDataPacket(PoopPacketType):
-    DEFINITION_IDENTIFIER = "poop.datapacket"
+class StartupPacket(HandshakePacket):
+    DEFINITION_IDENTIFIER = "poop.startuppacket"
     DEFINITION_VERSION = "1.0"
 
-    DEFAULT_DATAHASH = 0
 
-    FIELDS = [
-        ("data", BUFFER),
-        ("seq", UINT32),
-        ("datahash", UINT32),
-    ]
+class ShutdownPacket(HandshakePacket):
+    DEFINITION_IDENTIFIER = "poop.shutdownpacket"
+    DEFINITION_VERSION = "1.0"
