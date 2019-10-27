@@ -12,6 +12,8 @@ class DataPacket(PoopPacketType):
     DEFINITION_IDENTIFIER = "poop.datapacket"
     DEFINITION_VERSION = "1.0"
 
+    DEFAULT_DATAHASH = 0
+
     FIELDS = [
         ("seq", UINT32),
         ("hash", UINT32),

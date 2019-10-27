@@ -1,7 +1,7 @@
 from collections.abc import MutableMapping
 
 class SizedDict(MutableMapping):
-    def __init__(self, size=15, data={}, **kw):
+    def __init__(self, size=1, data={}, **kw):
         self.maxsize = size
         self._dict = {}
         self._dict.update(data)

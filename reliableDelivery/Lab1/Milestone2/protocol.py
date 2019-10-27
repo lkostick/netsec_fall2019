@@ -1,3 +1,5 @@
+import threading
+
 from playground.network.common import StackingProtocolFactory, StackingProtocol, StackingTransport
 from playground.network.packet import PacketType, FIELD_NOT_SET
 import logging
@@ -16,7 +18,10 @@ MAX_UINT32 = int(math.pow(2,32) - 1)
 MTU = 1500
 
 # Max SizedDict size
-SD_SIZE = 15
+SD_SIZE = 1
+
+# Timeout
+timeout_time = 5
 
 '''
 Utility functions
@@ -54,6 +59,7 @@ class PoopTransport(StackingTransport):
         super().__init__(transport)
         self.send_seq = None
         self.rcv_seq = None
+        self.timeout = None
 
     def setMode(self, mode):
         logger.debug('setting PoopTransport mode to {}'.format(mode))
@@ -113,7 +119,7 @@ class PoopTransport(StackingTransport):
                          'data: {}\n'
                          'hash: {}\n'.format(self._mode, self.send_buf[seq].seq, self.send_buf[seq].data, self.send_buf[seq].hash))
             self.lowerTransport().write(self.send_buf[seq].__serialize__())
-
+        self.timeout = threading.Timer(timeout_time, self.write_send_buf)
 
 
 class PoopHandshakeClientProtocol(StackingProtocol):
@@ -161,25 +167,25 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                                  "seq: {}\n"
                                  "ack: {}\n"
                                  "data: {}\n"
-                                 "datahash: {}\n".format(self._mode, pkt.seq, pkt.ack, pkt.data, pkt.datahash))
+                                 "hash: {}\n".format(self._mode, pkt.seq, pkt.ACK, pkt.data, pkt.hash))
                     # recieved data packet
-                    if not_set(pkt.ack) and is_set(pkt.seq, pkt.data):
+                    if not_set(pkt.ack) and is_set(pkt.seq, pkt.data, pkt.hash):
                         # do check if seq number matches
                         logger.debug('{} side checking {} == {}'.format(self._mode, pkt.seq, increment_mod(self.pt.rcv_seq)))
                         if pkt.seq == increment_mod(self.pt.rcv_seq):
                             # datahash = getHash(pkt.data)
-                            pkt_datahash = pkt.datahash # received datahash
-                            pkt.datahash = DataPacket.DEFAULT_DATAHASH
-                            gen_datahash = getHash(pkt.__serialize__()) # generated datahash
+                            pkt_hash = pkt.hash # received datahash
+                            pkt.hash = DataPacket.DEFAULT_DATAHASH
+                            gen_hash = getHash(pkt.__serialize__()) # generated datahash
 
                             # logger.debug('{} side checking {} == {}'.format(self._mode, pkt.datahash, datahash))
-                            logger.debug('{} side checking {} == {}'.format(self._mode, pkt_datahash, gen_datahash))
+                            logger.debug('{} side checking {} == {}'.format(self._mode, pkt_hash, gen_hash))
                             # if pkt.datahash == datahash:
-                            if pkt_datahash == gen_datahash:
+                            if pkt_hash == gen_hash:
                                 logger.debug('{} side sending ack = {}'.format(self._mode, self.pt.rcv_seq))
-                                ack_p = DataPacket(ack=self.pt.rcv_seq)
-                                ack_p.datahash = DataPacket.DEFAULT_DATAHASH
-                                ack_p.datahash = getHash(ack_p.__serialize__())
+                                ack_p = DataPacket(ACK=pkt.seq)
+                                ack_p.hash = DataPacket.DEFAULT_DATAHASH
+                                ack_p.hash = getHash(ack_p.__serialize__())
                                 self.transport.write(ack_p.__serialize__())
                                 logger.debug('{} side setting rcv_seq - 1 = {}'.format(self._mode, increment_mod(self.pt.rcv_seq)))
                                 self.pt.rcv_seq = increment_mod(self.pt.rcv_seq)
@@ -189,9 +195,9 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                                 logger.debug(
                                     '{} side ERROR = {}. Resending last sent ack = {}'.format(self._mode, error, self.pt.rcv_seq))
                                 # Resend last successful ack
-                                ack_p = DataPacket(ack=self.pt.rcv_seq)
-                                ack_p.datahash = DataPacket.DEFAULT_DATAHASH
-                                ack_p.datahash = getHash(ack_p.__serialize__())
+                                ack_p = DataPacket(ACK=self.pt.rcv_seq)
+                                ack_p.hash = DataPacket.DEFAULT_DATAHASH
+                                ack_p.hash = getHash(ack_p.__serialize__())
                                 self.transport.write(ack_p.__serialize__())
                         else:
                             # just drop the packet?
@@ -200,19 +206,21 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                                 '{} side ERROR = {}. Dropping packet.'.format(self._mode, error))
                             # TODO error
                     # received data ack
-                    elif is_set(pkt.ack):
+                    elif is_set(pkt.ACK) and not_set(pkt.data, pkt.seq, pkt.hash):
                         logger.debug('{} side received data ack'.format(self._mode))
-                        pkt_datahash = pkt.datahash # received datahash
-                        pkt.datahash = DataPacket.DEFAULT_DATAHASH
-                        gen_datahash = getHash(pkt.__serialize__()) # generated datahash
+                        pkt_hash = pkt.hash # received datahash
+                        pkt.hash = DataPacket.DEFAULT_DATAHASH
+                        gen_hash = getHash(pkt.__serialize__()) # generated datahash
 
                         # logger.debug('{} side checking {} == {}'.format(self._mode, pkt.datahash, datahash))
-                        logger.debug('{} side checking {} == {}'.format(self._mode, pkt_datahash, gen_datahash))
+                        logger.debug('{} side checking {} == {}'.format(self._mode, pkt_hash, gen_hash))
                         # if pkt.datahash == datahash:
-                        if pkt_datahash == gen_datahash:
-                            logger.debug('{} side received ack = {}'.format(self._mode, pkt.ack))
+                        if pkt_hash == gen_hash:
+                            logger.debug('{} side received ack = {}'.format(self._mode, pkt.ACK))
+                            if self.pt.timeout is not None:
+                                self.pt.timeout.cancel()
                             # if pkt.ack in self.send_buf:
-                            del self.send_buf[pkt.ack] # don't need to resend acked data packets
+                            del self.send_buf[pkt.ACK] # don't need to resend acked data packets
                             self.pt.fill_send_buf() # refill send_buf
                             self.pt.write_send_buf() # resend send_buf
                     else:
@@ -338,25 +346,25 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                                  "seq: {}\n"
                                  "ack: {}\n"
                                  "data: {}\n"
-                                 "datahash: {}\n".format(self._mode, pkt.seq, pkt.ack, pkt.data, pkt.datahash))
+                                 "hash: {}\n".format(self._mode, pkt.seq, pkt.ACK, pkt.data, pkt.hash))
                     # recieved data packet
-                    if not_set(pkt.ack) and is_set(pkt.seq, pkt.data):
+                    if not_set(pkt.ack) and is_set(pkt.seq, pkt.data, pkt.hash):
                         # do check if seq number matches
                         logger.debug('{} side checking {} == {}'.format(self._mode, pkt.seq, increment_mod(self.pt.rcv_seq)))
                         if pkt.seq == increment_mod(self.pt.rcv_seq):
                             # datahash = getHash(pkt.data)
-                            pkt_datahash = pkt.datahash # received datahash
-                            pkt.datahash = DataPacket.DEFAULT_DATAHASH
-                            gen_datahash = getHash(pkt.__serialize__()) # generated datahash
+                            pkt_hash = pkt.hash # received datahash
+                            pkt.hash = DataPacket.DEFAULT_DATAHASH
+                            gen_hash = getHash(pkt.__serialize__()) # generated datahash
 
                             # logger.debug('{} side checking {} == {}'.format(self._mode, pkt.datahash, datahash))
-                            logger.debug('{} side checking {} == {}'.format(self._mode, pkt_datahash, gen_datahash))
+                            logger.debug('{} side checking {} == {}'.format(self._mode, pkt_hash, gen_hash))
                             # if pkt.datahash == datahash:
-                            if pkt_datahash == gen_datahash:
+                            if pkt_hash == gen_hash:
                                 logger.debug('{} side sending ack = {}'.format(self._mode, self.pt.rcv_seq))
-                                ack_p = DataPacket(ack=self.pt.rcv_seq)
-                                ack_p.datahash = DataPacket.DEFAULT_DATAHASH
-                                ack_p.datahash = getHash(ack_p.__serialize__())
+                                ack_p = DataPacket(ACK=pkt.seq)
+                                ack_p.hash = DataPacket.DEFAULT_DATAHASH
+                                ack_p.hash = getHash(ack_p.__serialize__())
                                 self.transport.write(ack_p.__serialize__())
                                 logger.debug('{} side setting rcv_seq - 1 = {}'.format(self._mode, increment_mod(self.pt.rcv_seq)))
                                 self.pt.rcv_seq = increment_mod(self.pt.rcv_seq)
@@ -366,30 +374,32 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                                 logger.debug(
                                     '{} side ERROR = {}. Resending last sent ack = {}'.format(self._mode, error, self.pt.rcv_seq))
                                 # Resend last successful ack
-                                ack_p = DataPacket(ack=self.pt.rcv_seq)
-                                ack_p.datahash = DataPacket.DEFAULT_DATAHASH
-                                ack_p.datahash = getHash(ack_p.__serialize__())
+                                ack_p = DataPacket(ACK=self.pt.rcv_seq)
+                                ack_p.hash = DataPacket.DEFAULT_DATAHASH
+                                ack_p.hash = getHash(ack_p.__serialize__())
                                 self.transport.write(ack_p.__serialize__())
                         else:
-                            # just drop the packets?
+                            # just drop the packet?
                             error = 'pkt.seq != self.pt.rcv_seq'
                             logger.debug(
                                 '{} side ERROR = {}. Dropping packet.'.format(self._mode, error))
                             # TODO error
                     # received data ack
-                    elif is_set(pkt.ack):
+                    elif is_set(pkt.ACK) and not_set(pkt.data, pkt.seq, pkt.hash):
                         logger.debug('{} side received data ack'.format(self._mode))
-                        pkt_datahash = pkt.datahash # received datahash
-                        pkt.datahash = DataPacket.DEFAULT_DATAHASH
-                        gen_datahash = getHash(pkt.__serialize__()) # generated datahash
+                        pkt_hash = pkt.hash # received datahash
+                        pkt.hash = DataPacket.DEFAULT_DATAHASH
+                        gen_hash = getHash(pkt.__serialize__()) # generated datahash
 
                         # logger.debug('{} side checking {} == {}'.format(self._mode, pkt.datahash, datahash))
-                        logger.debug('{} side checking {} == {}'.format(self._mode, pkt_datahash, gen_datahash))
+                        logger.debug('{} side checking {} == {}'.format(self._mode, pkt_hash, gen_hash))
                         # if pkt.datahash == datahash:
-                        if pkt_datahash == gen_datahash:
-                            logger.debug('{} side received ack = {}'.format(self._mode, pkt.ack))
+                        if pkt_hash == gen_hash:
+                            logger.debug('{} side received ack = {}'.format(self._mode, pkt.ACK))
+                            if self.pt.timeout is not None:
+                                self.pt.timeout.cancel()
                             # if pkt.ack in self.send_buf:
-                            del self.send_buf[pkt.ack] # don't need to resend acked data packets
+                            del self.send_buf[pkt.ACK] # don't need to resend acked data packets
                             self.pt.fill_send_buf() # refill send_buf
                             self.pt.write_send_buf() # resend send_buf
                     else:
@@ -401,7 +411,6 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                     error = 'got something other than a PoopDataPacket: ignore'
                     logger.debug(
                         '{} side ERROR = {}'.format(self._mode, error))
-
         # do handshake
         else:
             for pkt in self.deserializer.nextPackets():
