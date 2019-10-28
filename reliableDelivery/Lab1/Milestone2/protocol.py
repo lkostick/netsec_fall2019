@@ -4,10 +4,12 @@ from playground.network.common import StackingProtocolFactory, StackingProtocol,
 from playground.network.packet import PacketType, FIELD_NOT_SET
 import logging
 import random
-from .packets import *
+from packets import * # for unit testing
+# from .packets import *
 import math, binascii
 from collections import deque
-from .sized_dict import SizedDict
+# from .sized_dict import SizedDict
+from sized_dict import SizedDict # for unit testing
 
 logger = logging.getLogger("playground.__connector__." + __name__)
 
@@ -563,7 +565,8 @@ class PoopHandshakeServerProtocol(StackingProtocol):
 
                     # should receive syn = (X+1)mod2^32 and ack = (Y+1)mod2^32
                     elif self.state==1 and pkt.status==HandshakePacket.SUCCESS and \
-                            is_set(pkt.SYN, pkt.ACK) and not not_set(pkt.last_valid_sequence, pkt.error):
+                            is_set(pkt.SYN, pkt.ACK) and not_set(pkt.last_valid_sequence, pkt.error):
+                        logger.debug('{} side protocol here'.format(self._mode))
                         # if handshake successful
                         if pkt.ACK == increment_mod(self.syn) and pkt.SYN == increment_mod(self.ack):
                             logger.debug('{} side setting handshakeComplete to True'.format(self._mode))
