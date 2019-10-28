@@ -138,6 +138,7 @@ class PoopTransport(StackingTransport):
                          'hash: {}\n'.format(self._mode, self.send_buf[seq].seq, self.send_buf[seq].data, self.send_buf[seq].hash))
             self.lowerTransport().write(self.send_buf[seq].__serialize__())
         self.timeout = threading.Timer(timeout_time, self.write_send_buf)
+        self.timeout.start()
 
 
 class PoopHandshakeClientProtocol(StackingProtocol):
@@ -237,6 +238,7 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                             logger.debug('{} side received ack = {}'.format(self._mode, pkt.ACK))
                             if self.pt.timeout is not None:
                                 self.pt.timeout.cancel()
+                                self.pt.timeout = None
                             # if pkt.ack in self.send_buf:
                             del self.send_buf[pkt.ACK] # don't need to resend acked data packets
                             self.pt.fill_send_buf() # refill send_buf
