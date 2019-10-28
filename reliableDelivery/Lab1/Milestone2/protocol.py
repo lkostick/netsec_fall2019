@@ -61,6 +61,22 @@ class PoopTransport(StackingTransport):
         self.rcv_seq = None
         self.timeout = None
 
+    def close(self):
+        p = ShutdownPacket()
+        max_seq = None
+        for seq in iter(self.send_buf):
+            if max_seq is None or seq >= max_seq:
+                max_seq = seq
+        p.last_valid_sequence = self.pt.max_seq
+        logger.debug(
+            '{} side sending packet:\n'
+            'syn: {}\n'
+            'ack: {}\n'
+            'status: {}\n'
+            'error: {}\n'
+            'last_valid_sequence: {}'.format(self._mode, p.SYN, p.ACK, p.status, p.error, p.last_valid_sequence))
+        self.lowerTransport().write(p.__serialize__())
+
     def setMode(self, mode):
         logger.debug('setting PoopTransport mode to {}'.format(mode))
         self._mode = mode
@@ -228,6 +244,60 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                         logger.debug(
                             '{} side ERROR = {}'.format(self._mode, error))
                         # TODO error
+
+                elif isinstance(pkt, ShutdownPacket):
+                    logger.debug('{} side received shutdown packet:\n'
+                                 'syn: {}\n'
+                                 'ack: {}\n'
+                                 'status: {}\n'
+                                 'error: {}\n'
+                                 'last_valid_sequence: {}'.format(self._mode, pkt.SYN, pkt.ACK, pkt.status, pkt.error,
+                                                                  pkt.last_valid_sequence))
+                    if is_set(pkt.last_valid_sequence, pkt.ACK) and not_set(pkt.SYN, pkt.status, pkt.error):
+                        self.connection_lost(None)
+                    elif is_set(pkt.last_valid_sequence) and not_set(pkt.SYN, pkt.ACK, pkt.status, pkt.error):
+                        if self.pt.rcv_seq >= pkt.last_valid_sequence:
+                            p = ShutdownPacket()
+                            p.ACK = pkt.last_valid_sequence
+                            max_seq = None
+                            for seq in iter(self.pt.send_buf):
+                                if max_seq is None or seq >= max_seq:
+                                    max_seq = seq
+                            p.last_valid_sequence = max_seq
+                            self.transport.write(p.__serialize__())
+
+                        else:
+                            # Error: some packets are still left to be received
+                            p = ShutdownPacket()
+                            p.status = ShutdownPacket.ERROR
+                            p.error = 'Some packets are still left to be received'
+                            self.transport.write(p.__serialize__())
+                    elif pkt.status == ShutdownPacket.ERROR and is_set(pkt.error):
+                        # Error reported from the other side while trying shutdown
+                        # try again
+                        p = ShutdownPacket()
+                        max_seq = None
+                        for seq in iter(self.pt.send_buf):
+                            if max_seq is None or seq >= max_seq:
+                                max_seq = seq
+                        p.last_valid_sequence = self.pt.max_seq
+                        logger.debug(
+                            '{} side sending packet:\n'
+                            'syn: {}\n'
+                            'ack: {}\n'
+                            'status: {}\n'
+                            'error: {}\n'
+                            'last_valid_sequence: {}'.format(self._mode, p.SYN, p.ACK, p.status, p.error,
+                                                             p.last_valid_sequence))
+                        self.transport.write(p.__serialize__())
+                    else:
+                        # fields not set correctly
+                        p = ShutdownPacket()
+                        p.status = ShutdownPacket.ERROR
+                        p.error = 'fields not set correctly'
+                        self.transport.write(p.__serialize__())
+
+
                 else:
                     error = 'got something other than a PoopDataPacket: ignore'
                     logger.debug(
@@ -407,6 +477,58 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                         logger.debug(
                             '{} side ERROR = {}'.format(self._mode, error))
                         # TODO error
+
+                elif isinstance(pkt, ShutdownPacket):
+                    logger.debug('{} side received shutdown packet:\n'
+                                 'syn: {}\n'
+                                 'ack: {}\n'
+                                 'status: {}\n'
+                                 'error: {}\n'
+                                 'last_valid_sequence: {}'.format(self._mode, pkt.SYN, pkt.ACK, pkt.status, pkt.error,
+                                                                  pkt.last_valid_sequence))
+                    if is_set(pkt.last_valid_sequence, pkt.ACK) and not_set(pkt.SYN, pkt.status, pkt.error):
+                        self.connection_lost(None)
+                    elif is_set(pkt.last_valid_sequence) and not_set(pkt.SYN, pkt.ACK, pkt.status, pkt.error):
+                        if self.pt.rcv_seq >= pkt.last_valid_sequence:
+                            p = ShutdownPacket()
+                            p.ACK = pkt.last_valid_sequence
+                            max_seq = None
+                            for seq in iter(self.pt.send_buf):
+                                if max_seq is None or seq >= max_seq:
+                                    max_seq = seq
+                            p.last_valid_sequence = max_seq
+                            self.transport.write(p.__serialize__())
+
+                        else:
+                            # Error: some packets are still left to be received
+                            p = ShutdownPacket()
+                            p.status = ShutdownPacket.ERROR
+                            p.error = 'Some packets are still left to be received'
+                            self.transport.write(p.__serialize__())
+                    elif pkt.status == ShutdownPacket.ERROR and is_set(pkt.error):
+                        # Error reported from the other side while trying shutdown
+                        # try again
+                        p = ShutdownPacket()
+                        max_seq = None
+                        for seq in iter(self.pt.send_buf):
+                            if max_seq is None or seq >= max_seq:
+                                max_seq = seq
+                        p.last_valid_sequence = self.pt.max_seq
+                        logger.debug(
+                            '{} side sending packet:\n'
+                            'syn: {}\n'
+                            'ack: {}\n'
+                            'status: {}\n'
+                            'error: {}\n'
+                            'last_valid_sequence: {}'.format(self._mode, p.SYN, p.ACK, p.status, p.error,
+                                                             p.last_valid_sequence))
+                        self.transport.write(p.__serialize__())
+                    else:
+                        # fields not set correctly
+                        p = ShutdownPacket()
+                        p.status = ShutdownPacket.ERROR
+                        p.error = 'fields not set correctly'
+                        self.transport.write(p.__serialize__())
                 else:
                     error = 'got something other than a PoopDataPacket: ignore'
                     logger.debug(
@@ -508,6 +630,19 @@ class PoopHandshakeServerProtocol(StackingProtocol):
 
     def connection_lost(self, exc):
         logger.debug("{} POOP connection lost. Shutting down higher layer.".format(self._mode))
+        p = ShutdownPacket()
+        max_seq = None
+        for seq in iter(self.pt.send_buf):
+            if max_seq is None or seq >= max_seq:
+                max_seq = seq
+        p.last_valid_sequence = self.pt.max_seq
+        logger.debug(
+            '{} side sending packet:\n'
+            'syn: {}\n'
+            'ack: {}\n'
+            'status: {}\n'
+            'error: {}\n'
+            'last_valid_sequence: {}'.format(self._mode, p.SYN, p.ACK, p.status, p.error, p.last_valid_sequence))
         self.higherProtocol().connection_lost(exc)
 
 PoopHandshakeClientFactory = StackingProtocolFactory.CreateFactoryType(PoopHandshakeClientProtocol)
