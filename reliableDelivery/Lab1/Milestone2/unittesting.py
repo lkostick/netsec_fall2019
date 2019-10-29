@@ -58,26 +58,48 @@ class DummyApplication(asyncio.Protocol):
         return data
         
 # class TestPoopDataHandling(unittest.TestCase):
-#     def setUp(self):
-#         asyncio.set_event_loop(TestLoopEx())
+# 	def setUp(self):
+# 		self.client_poop = PoopHandshakeClientProtocol()
+# 		self.server_poop = PoopHandshakeServerProtocol()
+
+# 		self.client = DummyApplication()
+# 		self.server = DummyApplication()
+
+# 		self.client_poop.setHigherProtocol(self.client)
+# 		self.server_poop.setHigherProtocol(self.server)
+
+# 		self.client_write_storage = []
+# 		self.server_write_storage = []
+
+# 		self.client_transport = MockTransport(ListWriter(self.client_write_storage))
+# 		self.server_transport = MockTransport(ListWriter(self.server_write_storage))
+
+# 		self.server_poop.connection_made(self.server_transport)
+# 		self.client_poop.connection_made(self.client_transport)
+
+# 		self.assertEqual(self.client._connection_made_called, 0)
+# 		self.assertEqual(self.server._connection_made_called, 0)
+
+
+#         # asyncio.set_event_loop(TestLoopEx())
         
-#         self.dummy_client = DummyApplication()
-#         self.dummy_server = DummyApplication()
+#         # self.dummy_client = DummyApplication()
+#         # self.dummy_server = DummyApplication()
         
-#         self.client_write_storage = []
-#         self.server_write_storage = []
+#         # self.client_write_storage = []
+#         # self.server_write_storage = []
         
-#         self.client_deserializer = PoopPacketType.Deserializer()
-#         self.server_deserializer = PoopPacketType.Deserializer()
+#         # self.client_deserializer = PoopPacketType.Deserializer()
+#         # self.server_deserializer = PoopPacketType.Deserializer()
         
-#         client_transport = MockTransport(ListWriter(self.client_write_storage))
-#         server_transport = MockTransport(ListWriter(self.server_write_storage))
+#         # client_transport = MockTransport(ListWriter(self.client_write_storage))
+#         # server_transport = MockTransport(ListWriter(self.server_write_storage))
         
-#         self.client_tx = PoopTx(client_transport, 1000)
-#         self.client_rx = PoopRx(self.dummy_client, client_transport, 9000)
+#         # self.client_tx = PoopTx(client_transport, 1000)
+#         # self.client_rx = PoopRx(self.dummy_client, client_transport, 9000)
         
-#         self.server_tx = PoopTx(server_transport, 9000)
-#         self.server_rx = PoopRx(self.dummy_server, server_transport, 1000)
+#         # self.server_tx = PoopTx(server_transport, 9000)
+#         # self.server_rx = PoopRx(self.dummy_server, server_transport, 1000)
         
 #     def test_simple_transmission(self):
 #         msg = b"this is a test"
@@ -111,54 +133,54 @@ class DummyApplication(asyncio.Protocol):
 #         self.assertEqual(self.dummy_server.pop_all_data(), msg)
         
 
-# class TestPoopHandshake(unittest.TestCase):
-#     def setUp(self):
-#         self.client_poop = PoopHandshakeClientProtocol()
-#         self.server_poop = PoopHandshakeServerProtocol()
+class TestPoopHandshake(unittest.TestCase):
+    def setUp(self):
+        self.client_poop = PoopHandshakeClientProtocol()
+        self.server_poop = PoopHandshakeServerProtocol()
         
-#         self.client = DummyApplication()
-#         self.server = DummyApplication()
+        self.client = DummyApplication()
+        self.server = DummyApplication()
         
-#         self.client_poop.setHigherProtocol(self.client)
-#         self.server_poop.setHigherProtocol(self.server)
+        self.client_poop.setHigherProtocol(self.client)
+        self.server_poop.setHigherProtocol(self.server)
         
-#         self.client_write_storage = []
-#         self.server_write_storage = []
+        self.client_write_storage = []
+        self.server_write_storage = []
         
-#         self.client_transport = MockTransport(ListWriter(self.client_write_storage))
-#         self.server_transport = MockTransport(ListWriter(self.server_write_storage))
+        self.client_transport = MockTransport(ListWriter(self.client_write_storage))
+        self.server_transport = MockTransport(ListWriter(self.server_write_storage))
         
-#     def tearDown(self):
-#         pass
+    def tearDown(self):
+        pass
 
-#     def test_no_error_handshake(self):
-#         self.server_poop.connection_made(self.server_transport)
-#         self.client_poop.connection_made(self.client_transport)
+    def test_no_error_handshake(self):
+        self.server_poop.connection_made(self.server_transport)
+        self.client_poop.connection_made(self.client_transport)
         
-#         self.assertEqual(self.client._connection_made_called, 0)
-#         self.assertEqual(self.server._connection_made_called, 0)
+        self.assertEqual(self.client._connection_made_called, 0)
+        self.assertEqual(self.server._connection_made_called, 0)
         
-#         # there should only be 1 blob of bytes for the SYN
-#         self.assertEqual(len(self.client_write_storage), 1)
-#         self.server_poop.data_received(self.client_write_storage.pop())
+        # there should only be 1 blob of bytes for the SYN
+        self.assertEqual(len(self.client_write_storage), 1)
+        self.server_poop.data_received(self.client_write_storage.pop())
         
-#         # server still should not be connected
-#         self.assertEqual(self.server._connection_made_called, 0)
+        # server still should not be connected
+        self.assertEqual(self.server._connection_made_called, 0)
         
-#         # there should be 1 blob of bytes from the server for the SYN ACK
-#         self.assertEqual(len(self.server_write_storage), 1)
+        # there should be 1 blob of bytes from the server for the SYN ACK
+        self.assertEqual(len(self.server_write_storage), 1)
         
-#         self.client_poop.data_received(self.server_write_storage.pop())
+        self.client_poop.data_received(self.server_write_storage.pop())
         
-#         # now client should be connected
-#         self.assertEqual(self.client._connection_made_called, 1)
+        # now client should be connected
+        self.assertEqual(self.client._connection_made_called, 1)
         
-#         # there should be 1 blob of bytes for the SYN ACK ACK storage
-#         self.assertEqual(len(self.client_write_storage), 1)
-#         self.server_poop.data_received(self.client_write_storage.pop())
+        # there should be 1 blob of bytes for the SYN ACK ACK storage
+        self.assertEqual(len(self.client_write_storage), 1)
+        self.server_poop.data_received(self.client_write_storage.pop())
         
-#         # server should be connected
-#         self.assertEqual(self.server._connection_made_called, 1)
+        # server should be connected
+        self.assertEqual(self.server._connection_made_called, 1)
 
 
 class TestPoopShutdown(unittest.TestCase):

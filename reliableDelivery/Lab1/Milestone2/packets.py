@@ -18,7 +18,7 @@ class DataPacket(PoopPacketType):
         ("seq", UINT32({Optional: True})),
         ("hash", UINT32),
         ("data", BUFFER({Optional: True})),
-        ("ack", UINT32({Optional: True})),
+        ("ACK", UINT32({Optional: True})),
     ]
 
 class ShutdownPacket(PoopPacketType):
@@ -28,9 +28,9 @@ class ShutdownPacket(PoopPacketType):
     DEFAULT_DATAHASH = 0
 
     FIELDS = [
-        ("fin", UINT32({Optional: True})),
-        ("ack", UINT32({Optional: True})),
-        ("hash", UINT32)
+        ("FIN", UINT32({Optional: True})),
+        ("FACK", UINT32({Optional: True})),
+        ("hash", UINT32({Optional: True})) # not in prfc, but we can do this in our implementation
     ]
 
 
@@ -44,18 +44,8 @@ class HandshakePacket(PoopPacketType):
 
     FIELDS = [
         ("status", UINT8),
-        ("syn", UINT32({Optional: True})),
-        ("ack", UINT32({Optional: True})),
-        ("error", STRING({Optional: True}))
-        # ("last_valid_sequence", UINT32({Optional: True}))
+        ("SYN", UINT32({Optional: True})),
+        ("ACK", UINT32({Optional: True})),
+        ("error", STRING({Optional: True})),
+        ("last_valid_sequence", UINT32({Optional: True})) # never used even in the prfc, but fuck it
     ]
-
-
-# class StartupPacket(HandshakePacket):
-#     DEFINITION_IDENTIFIER = "poop.startuppacket"
-#     DEFINITION_VERSION = "1.0"
-
-
-# class ShutdownPacket(HandshakePacket):
-#     DEFINITION_IDENTIFIER = "poop.shutdownpacket"
-#     DEFINITION_VERSION = "1.0"

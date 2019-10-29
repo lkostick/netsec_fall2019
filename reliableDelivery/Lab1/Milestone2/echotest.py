@@ -121,6 +121,9 @@ class EchoClientProtocol(asyncio.Protocol):
 
         self.transport.write(echoPacket.__serialize__())
 
+    def connection_lost(self, reason=None):
+        print("Lost connection to server. Cleaning up.")
+
 
 class EchoControl:
     def __init__(self):
