@@ -15,10 +15,22 @@ class DataPacket(PoopPacketType):
     DEFAULT_DATAHASH = 0
 
     FIELDS = [
-        ("seq", UINT32),
+        ("seq", UINT32({Optional: True})),
         ("hash", UINT32),
         ("data", BUFFER({Optional: True})),
-        ("ACK", UINT32({Optional: True})),
+        ("ack", UINT32({Optional: True})),
+    ]
+
+class ShutdownPacket(PoopPacketType):
+    DEFINITION_IDENTIFIER = 'poop.shutdownpacket'
+    DEFINITION_VERSION = '1.0'
+
+    DEFAULT_DATAHASH = 0
+
+    FIELDS = [
+        ("fin", UINT32({Optional: True})),
+        ("ack", UINT32({Optional: True})),
+        ("hash", UINT32)
     ]
 
 
@@ -32,18 +44,18 @@ class HandshakePacket(PoopPacketType):
 
     FIELDS = [
         ("status", UINT8),
-        ("SYN", UINT32({Optional: True})),
-        ("ACK", UINT32({Optional: True})),
-        ("error", STRING({Optional: True})),
-        ("last_valid_sequence", UINT32({Optional: True}))
+        ("syn", UINT32({Optional: True})),
+        ("ack", UINT32({Optional: True})),
+        ("error", STRING({Optional: True}))
+        # ("last_valid_sequence", UINT32({Optional: True}))
     ]
 
 
-class StartupPacket(HandshakePacket):
-    DEFINITION_IDENTIFIER = "poop.startuppacket"
-    DEFINITION_VERSION = "1.0"
+# class StartupPacket(HandshakePacket):
+#     DEFINITION_IDENTIFIER = "poop.startuppacket"
+#     DEFINITION_VERSION = "1.0"
 
 
-class ShutdownPacket(HandshakePacket):
-    DEFINITION_IDENTIFIER = "poop.shutdownpacket"
-    DEFINITION_VERSION = "1.0"
+# class ShutdownPacket(HandshakePacket):
+#     DEFINITION_IDENTIFIER = "poop.shutdownpacket"
+#     DEFINITION_VERSION = "1.0"
