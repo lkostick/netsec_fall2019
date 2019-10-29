@@ -7,6 +7,7 @@ from playground.asyncio_lib.testing import TestLoopEx
 from playground.common.logging import EnablePresetLogging, PRESET_DEBUG
 
 from protocol import *
+from packets import *
 
 # def pop_packets(storage, deserializer, rx, tx, reorder=False, error_rate=0):
 #     while storage:
@@ -36,7 +37,7 @@ class ListWriter:
 class DummyApplication(asyncio.Protocol):
     def __init__(self):
         self._connection_made_called = 0
-        self._connecton_lost_called = 0
+        self._connection_lost_called = 0
         self._data = []
         self._transport = None
         
@@ -110,54 +111,162 @@ class DummyApplication(asyncio.Protocol):
 #         self.assertEqual(self.dummy_server.pop_all_data(), msg)
         
 
-class TestPoopHandshake(unittest.TestCase):
-    def setUp(self):
-        self.client_poop = PoopHandshakeClientProtocol()
-        self.server_poop = PoopHandshakeServerProtocol()
+# class TestPoopHandshake(unittest.TestCase):
+#     def setUp(self):
+#         self.client_poop = PoopHandshakeClientProtocol()
+#         self.server_poop = PoopHandshakeServerProtocol()
         
-        self.client = DummyApplication()
-        self.server = DummyApplication()
+#         self.client = DummyApplication()
+#         self.server = DummyApplication()
         
-        self.client_poop.setHigherProtocol(self.client)
-        self.server_poop.setHigherProtocol(self.server)
+#         self.client_poop.setHigherProtocol(self.client)
+#         self.server_poop.setHigherProtocol(self.server)
         
-        self.client_write_storage = []
-        self.server_write_storage = []
+#         self.client_write_storage = []
+#         self.server_write_storage = []
         
-        self.client_transport = MockTransport(ListWriter(self.client_write_storage))
-        self.server_transport = MockTransport(ListWriter(self.server_write_storage))
+#         self.client_transport = MockTransport(ListWriter(self.client_write_storage))
+#         self.server_transport = MockTransport(ListWriter(self.server_write_storage))
         
-    def tearDown(self):
-        pass
+#     def tearDown(self):
+#         pass
 
-    def test_no_error_handshake(self):
-        self.server_poop.connection_made(self.server_transport)
-        self.client_poop.connection_made(self.client_transport)
+#     def test_no_error_handshake(self):
+#         self.server_poop.connection_made(self.server_transport)
+#         self.client_poop.connection_made(self.client_transport)
         
-        self.assertEqual(self.client._connection_made_called, 0)
-        self.assertEqual(self.server._connection_made_called, 0)
+#         self.assertEqual(self.client._connection_made_called, 0)
+#         self.assertEqual(self.server._connection_made_called, 0)
         
-        # there should only be 1 blob of bytes for the SYN
-        self.assertEqual(len(self.client_write_storage), 1)
-        self.server_poop.data_received(self.client_write_storage.pop())
+#         # there should only be 1 blob of bytes for the SYN
+#         self.assertEqual(len(self.client_write_storage), 1)
+#         self.server_poop.data_received(self.client_write_storage.pop())
         
-        # server still should not be connected
-        self.assertEqual(self.server._connection_made_called, 0)
+#         # server still should not be connected
+#         self.assertEqual(self.server._connection_made_called, 0)
         
-        # there should be 1 blob of bytes from the server for the SYN ACK
-        self.assertEqual(len(self.server_write_storage), 1)
+#         # there should be 1 blob of bytes from the server for the SYN ACK
+#         self.assertEqual(len(self.server_write_storage), 1)
         
-        self.client_poop.data_received(self.server_write_storage.pop())
+#         self.client_poop.data_received(self.server_write_storage.pop())
         
-        # now client should be connected
-        self.assertEqual(self.client._connection_made_called, 1)
+#         # now client should be connected
+#         self.assertEqual(self.client._connection_made_called, 1)
         
-        # there should be 1 blob of bytes for the SYN ACK ACK storage
-        self.assertEqual(len(self.client_write_storage), 1)
-        self.server_poop.data_received(self.client_write_storage.pop())
+#         # there should be 1 blob of bytes for the SYN ACK ACK storage
+#         self.assertEqual(len(self.client_write_storage), 1)
+#         self.server_poop.data_received(self.client_write_storage.pop())
         
-        # server should be connected
-        self.assertEqual(self.server._connection_made_called, 1)
+#         # server should be connected
+#         self.assertEqual(self.server._connection_made_called, 1)
+
+
+class TestPoopShutdown(unittest.TestCase):
+	def setUp(self):
+		self.deserializer = PoopPacketType.Deserializer()
+
+		self.client_poop = PoopHandshakeClientProtocol()
+		self.server_poop = PoopHandshakeServerProtocol()
+
+		self.client = DummyApplication()
+		self.server = DummyApplication()
+
+		self.client_poop.setHigherProtocol(self.client)
+		self.server_poop.setHigherProtocol(self.server)
+
+		self.client_write_storage = []
+		self.server_write_storage = []
+
+		self.client_transport = MockTransport(ListWriter(self.client_write_storage))
+		self.server_transport = MockTransport(ListWriter(self.server_write_storage))
+
+		self.server_poop.connection_made(self.server_transport)
+		self.client_poop.connection_made(self.client_transport)
+
+		self.assertEqual(self.client._connection_made_called, 0)
+		self.assertEqual(self.server._connection_made_called, 0)
+
+		# there should only be 1 blob of bytes for the SYN
+		# self.assertEqual(len(self.client_write_storage), 1)
+		self.server_poop.data_received(self.client_write_storage.pop())
+
+		# server still should not be connected
+		# self.assertEqual(self.server._connection_made_called, 0)
+
+		# there should be 1 blob of bytes from the server for the SYN ACK
+		# self.assertEqual(len(self.server_write_storage), 1)
+
+		self.client_poop.data_received(self.server_write_storage.pop())
+
+		# now client should be connected
+		# self.assertEqual(self.client._connection_made_called, 1)
+
+		# there should be 1 blob of bytes for the SYN ACK ACK storage
+		# self.assertEqual(len(self.client_write_storage), 1)
+		self.server_poop.data_received(self.client_write_storage.pop())
+
+		# server should be connected
+		# self.assertEqual(self.server._connection_made_called, 1)
+
+	def test_server_inits_shutdown(self):
+		# server application initiates the shutdown sequence
+		self.server._transport.close()
+		self.assertEqual(self.server._connection_lost_called, 0)
+
+		# the poop server should write a fin packet
+		self.assertEqual(len(self.server_write_storage), 1)
+		finpkt = self.server_write_storage.pop()
+		self.deserializer.update(finpkt)
+		for pkt in self.deserializer.nextPackets():
+			print(pkt.DEFINITION_IDENTIFIER)
+			self.assertTrue(isinstance(pkt, ShutdownPacket))
+
+		# the poop client should receive a fin packet and write a fin/ack packet
+		self.client_poop.data_received(finpkt) # connection_lost should be called here
+		self.assertEqual(len(self.client_write_storage), 1)
+		finackpkt = self.client_write_storage.pop()
+		self.deserializer.update(finpkt)
+		for pkt in self.deserializer.nextPackets():
+			print(pkt.DEFINITION_IDENTIFIER)
+			self.assertTrue(isinstance(pkt, ShutdownPacket))
+
+		# the client connection should be terminated
+		self.assertEqual(self.client._connection_lost_called, 1)
+
+		# the poop server should receive a fin/ack packet, and terminate the connection
+		self.server_poop.data_received(finackpkt)
+		self.assertEqual(self.server._connection_lost_called, 1)
+
+	def test_client_inits_shutdown(self):
+		# client application initiates the shutdown sequence
+		self.client._transport.close()
+		self.assertEqual(self.client._connection_lost_called, 0)
+
+		# the poop client should write a fin packet
+		self.assertEqual(len(self.client_write_storage), 1)
+		finpkt = self.client_write_storage.pop()
+		self.deserializer.update(finpkt)
+		for pkt in self.deserializer.nextPackets():
+			print(pkt.DEFINITION_IDENTIFIER)
+			self.assertTrue(isinstance(pkt, ShutdownPacket))
+
+		# the poop server should receive a fin packet and write a fin/ack packet
+		self.server_poop.data_received(finpkt) # connection_lost should be called here
+		self.assertEqual(len(self.server_write_storage), 1)
+		finackpkt = self.server_write_storage.pop()
+		self.deserializer.update(finpkt)
+		for pkt in self.deserializer.nextPackets():
+			print(pkt.DEFINITION_IDENTIFIER)
+			self.assertTrue(isinstance(pkt, ShutdownPacket))
+
+		# the server connection should be terminated
+		self.assertEqual(self.server._connection_lost_called, 1)
+
+		# the poop client should receive a fin/ack packet, and terminate the connection
+		self.client_poop.data_received(finackpkt)
+		self.assertEqual(self.client._connection_lost_called, 1)
+
+
         
     
         
