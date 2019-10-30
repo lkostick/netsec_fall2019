@@ -79,8 +79,8 @@ class PoopTransport(StackingTransport):
                 self.shutdown_timeout.cancel()
                 self.shutdown_timeout = None
             logger.debug('{} side retrying shutdown timer for {} seconds'.format(self._mode, SHUTDOWN_TIMEOUT))
-            self.pt.shutdown_timeout = threading.Timer(SHUTDOWN_TIMEOUT, self.retry_shutdown)
-            self.pt.shutdown_timeout.start()
+            self.shutdown_timeout = threading.Timer(SHUTDOWN_TIMEOUT, self.retry_shutdown)
+            self.shutdown_timeout.start()
         else:
             # shutdown yourself
             self.protocol.doShutdown()
@@ -96,8 +96,8 @@ class PoopTransport(StackingTransport):
             p.hash = ShutdownPacket.DEFAULT_DATAHASH
             p.hash = getHash(p.__serialize__())
             logger.debug('{} side starting shutdown timer for {} seconds'.format(self._mode, SHUTDOWN_TIMEOUT))
-            self.pt.shutdown_timeout = threading.Timer(SHUTDOWN_TIMEOUT, self.retry_shutdown)
-            self.pt.shutdown_timeout.start()
+            self.shutdown_timeout = threading.Timer(SHUTDOWN_TIMEOUT, self.retry_shutdown)
+            self.shutdown_timeout.start()
             self.lowerTransport().write(p.__serialize__())
 
     def setMode(self, mode):
