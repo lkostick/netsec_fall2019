@@ -4,7 +4,7 @@ from playground.network.common import StackingProtocolFactory, StackingProtocol,
 from playground.network.packet import PacketType, FIELD_NOT_SET
 import logging
 import random
-from packets import * # for unit testing
+from .packets import * # TODO: Change for unit testing
 # from .packets import *
 import math, binascii
 from collections import deque
@@ -185,14 +185,16 @@ class PoopHandshakeClientProtocol(StackingProtocol):
         self.transport = transport
         self.syn = random.randint(0, MAX_UINT32)    # self.syn = X
         packet = HandshakePacket(SYN=self.syn, status=HandshakePacket.NOT_STARTED)  # pkt.syn = X
+        packet.hash = HandshakePacket.DEFAULT_HANDSHAKE_HASH
+        packet.hash = getHash(packet.__serialize__())
         packetBytes = packet.__serialize__()
         logger.debug('{} side setting state to {}'.format(self._mode, self.state+1))
         self.state += 1
-        logger.debug('{} side sending packet. Info:\n'
+        logger.debug('{} side sending handshake packet. Info:\n'
                      'syn: {}\n'
                      'ack: {}\n'
                      'status: {}\n'
-                     'error: {}\n'.format(self._mode, packet.SYN, packet.ACK, packet.status, packet.error))
+                     'hash: {}\n'.format(self._mode, packet.SYN, packet.ACK, packet.status, packet.hash))
         self.transport.write(packetBytes)
 
     def handle_handshake_error(self):
@@ -352,19 +354,29 @@ class PoopHandshakeClientProtocol(StackingProtocol):
         else:
             for pkt in self.deserializer.nextPackets():
                 if isinstance(pkt, HandshakePacket):
+                    logger.debug('{} side handshake packet received:\n'
+                                 'syn: {}\n'
+                                 'ack: {}\n'
+                                 'status: {}\n'
+                                 'hash: {}\n'.format(self._mode, pkt.SYN, pkt.ACK, pkt.status, pkt.hash))
+                    pkt_hash = pkt.hash
+                    pkt.hash = HandshakePacket.DEFAULT_HANDSHAKE_HASH
+                    gen_hash = getHash(pkt.__serialize__())
                     if self.state==1 and pkt.status==HandshakePacket.SUCCESS and \
-                            is_set(pkt.SYN, pkt.ACK) and not_set(pkt.error):
+                            is_set(pkt.SYN, pkt.ACK) and not_set(pkt.error) and pkt_hash == gen_hash:
                         if pkt.ACK==increment_mod(self.syn): # ACK = X + 1
                             self.ack = pkt.SYN # self.ack = Y, this is the rcv_seq
                             # self.syn = pkt.ACK # self.syn = X+1
                             p = HandshakePacket(status=HandshakePacket.SUCCESS)
                             p.SYN = increment_mod(self.syn) # p.syn = X+1
                             p.ACK = increment_mod(self.ack) # p.ack = Y+1
-                            logger.debug('{} side sending packet:\n'
+                            p.hash = HandshakePacket.DEFAULT_HANDSHAKE_HASH
+                            p.hash = getHash(p.__serialize__())
+                            logger.debug('{} side sending handshake packet:\n'
                                          'syn: {}\n'
                                          'ack: {}\n'
                                          'status: {}\n'
-                                         'error: {}\n'.format(self._mode, p.SYN, p.ACK, p.status, p.error))
+                                         'hash: {}\n'.format(self._mode, p.SYN, p.ACK, p.status, p.hash))
                             self.transport.write(p.__serialize__())
                             logger.debug('{} side setting state to {}'.format(self._mode, self.state+1))
                             self.state += 1
@@ -384,13 +396,12 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                             # What should be done if the error is noticed by the client side
                             self.handle_handshake_error()
                             # ack does not match syn+1
-                            p = HandshakePacket(status=HandshakePacket.ERROR)
-                            p.error = 'Client: Ack does not match Syn + 1'
+                            p = HandshakePacket(status=HandshakePacket.ERROR, hash='')
                             logger.debug('{} side sending packet. Info:\n'
                                          'syn: {}\n'
                                          'ack: {}\n'
                                          'status: {}\n'
-                                         'error: {}\n'.format(self._mode, p.syn, p.ack, p.status, p.error))
+                                         'hash: {}\n'.format(self._mode, p.syn, p.ack, p.status, p.hash))
                             self.transport.write(p.__serialize__())
                     elif pkt.status == HandshakePacket.ERROR:
                         logger.debug('Client: An error packet was received from the server: ' + str(pkt.error))
@@ -401,14 +412,13 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                         # What should be done if the error is noticed by the client side
                         # either state != 1 or status != SUCCESS or syn not set or ack not set
                         self.handle_handshake_error()
-                        p = HandshakePacket(status=HandshakePacket.ERROR)
-                        p.error = 'Client: Either state != 1 or status != SUCCESS or syn not set or ack not set'
+                        p = HandshakePacket(status=HandshakePacket.ERROR, hash='')
                         logger.debug(
-                            '{} side sending packet:\n'
+                            '{} side sending handshake packet:\n'
                             'syn: {}\n'
                             'ack: {}\n'
                             'status: {}\n'
-                            'error: {}\n'.format(self._mode, p.syn, p.ack, p.status, p.error))
+                            'hash: {}\n'.format(self._mode, p.syn, p.ack, p.status, p.hash))
                         self.transport.write(p.__serialize__())
                 else:
                     # not the PoopHandshakePacket: ignore
@@ -612,31 +622,36 @@ class PoopHandshakeServerProtocol(StackingProtocol):
         else:
             for pkt in self.deserializer.nextPackets():
                 if isinstance(pkt, HandshakePacket):
-                    logger.debug('{} side packet received:\n'
+                    logger.debug('{} side handshake packet received:\n'
                                  'syn: {}\n'
                                  'ack: {}\n'
                                  'status: {}\n'
-                                 'error: {}\n'.format(self._mode, pkt.SYN, pkt.ACK, pkt.status, pkt.error))
+                                 'hash: {}\n'.format(self._mode, pkt.SYN, pkt.ACK, pkt.status, pkt.hash))
+                    pkt_hash = pkt.hash
+                    pkt.hash = HandshakePacket.DEFAULT_HANDSHAKE_HASH
+                    gen_hash = getHash(pkt.__serialize__())
                     # should receive syn = X
                     if self.state==0 and pkt.status==HandshakePacket.NOT_STARTED and \
-                            is_set(pkt.SYN) and not_set(pkt.ACK, pkt.error):
+                            is_set(pkt.SYN) and not_set(pkt.ACK, pkt.error) and pkt_hash == gen_hash:
                         self.ack = pkt.SYN # self.ack = X
                         self.syn = random.randint(0, MAX_UINT32) # self.syn = Y
                         p = HandshakePacket(status=HandshakePacket.SUCCESS)
                         p.SYN = self.syn # p.syn = Y
                         p.ACK = increment_mod(self.ack) # p.ack = X+1
+                        p.hash = HandshakePacket.DEFAULT_HANDSHAKE_HASH
+                        p.hash = getHash(p.__serialize__())
                         logger.debug('{} side setting state to {}'.format(self._mode, self.state+1))
                         self.state += 1
-                        logger.debug('{} side sending packet:\n'
+                        logger.debug('{} side sending handshake packet:\n'
                                      'syn: {}\n'
                                      'ack: {}\n'
                                      'status: {}\n'
-                                     'error: {}\n'.format(self._mode, p.SYN, p.ACK, p.status, p.error))
+                                     'hash: {}\n'.format(self._mode, p.SYN, p.ACK, p.status, p.hash))
                         self.transport.write(p.__serialize__())
 
                     # should receive syn = (X+1)mod2^32 and ack = (Y+1)mod2^32
                     elif self.state==1 and pkt.status==HandshakePacket.SUCCESS and \
-                            is_set(pkt.SYN, pkt.ACK) and not_set(pkt.error):
+                            is_set(pkt.SYN, pkt.ACK) and not_set(pkt.error) and pkt_hash == gen_hash:
                         logger.debug('{} side protocol handshake ack'.format(self._mode))
                         # if handshake successful
                         if pkt.ACK == increment_mod(self.syn) and pkt.SYN == increment_mod(self.ack):
@@ -657,17 +672,16 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                             # What should be done if the error is noticed by the server side
                             # ack != self.syn + 1 or syn != self.ack + 1
                             self.handle_handshake_error()
-                            p = HandshakePacket(status=HandshakePacket.ERROR)
-                            p.error = 'Server: ack != self.syn + 1 or syn != self.ack + 1'
+                            p = HandshakePacket(status=HandshakePacket.ERROR, hash='')
                             logger.debug(
                                 '{} side sending packet:\n'
                                 'syn: {}\n'
                                 'ack: {}\n'
                                 'status: {}\n'
-                                'error: {}\n'.format(self._mode, p.syn, p.ack, p.status, p.error))
+                                'hash: {}\n'.format(self._mode, p.syn, p.ack, p.status, p.hash))
                             self.transport.write(p.__serialize__())
                     elif pkt.status == HandshakePacket.ERROR:
-                        logger.debug('Server: An error packet was received from the client: ' + str(pkt.error))
+                        logger.debug('Server: An error packet was received from the client during handshake: ' + str(pkt.error))
                         self.handle_handshake_error()
                         # What should be done if the client has identified the error and sent the server an error packet
 
@@ -675,14 +689,13 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                         # What should be done if the error is noticed by the server side
                         # invalid state and PoopHandshakePacket.status combination
                         self.handle_handshake_error()
-                        p = HandshakePacket(status=HandshakePacket.ERROR)
-                        p.error = 'Server: invalid state and PoopHandshakePacket.status combination'
+                        p = HandshakePacket(status=HandshakePacket.ERROR, hash='')
                         logger.debug(
-                            '{} side sending packet:\n'
+                            '{} side sending handshake packet:\n'
                             'syn: {}\n'
                             'ack: {}\n'
                             'status: {}\n'
-                            'error: {}\n'.format(self._mode, p.syn, p.ack, p.status, p.error))
+                            'hash: {}\n'.format(self._mode, p.syn, p.ack, p.status, p.hash))
                         self.transport.write(p.__serialize__())
                 else:
                     # What should be done if the error is noticed by the server side
