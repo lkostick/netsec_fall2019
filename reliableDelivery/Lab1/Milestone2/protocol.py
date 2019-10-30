@@ -4,7 +4,7 @@ from playground.network.common import StackingProtocolFactory, StackingProtocol,
 from playground.network.packet import PacketType, FIELD_NOT_SET
 import logging
 import random
-from .packets import * # TODO: Change for unit testing
+from packets import * # TODO: Change for unit testing
 # from .packets import *
 import math, binascii
 from collections import deque
