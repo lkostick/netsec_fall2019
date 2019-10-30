@@ -23,8 +23,8 @@ MTU = 15000
 SD_SIZE = 1
 
 # Timeout
-timeout_time = 2
-
+DATA_TRANSFER_TIMEOUT = 2
+HANDSHAKE_TIMEOUT = 2
 SHUTDOWN_TIMEOUT = 2
 
 '''
@@ -64,23 +64,23 @@ class PoopTransport(StackingTransport):
         super().__init__(transport)
         self.send_seq = None
         self.rcv_seq = None
-        self.data_transfer_timeout = None
-        self.shutdown_timeout = None
+        self.data_transfer_timer = None
+        self.shutdown_timer = None
+        self.shutdown_counter = 1
         self.max_seq = None
         self.closing = False
-        self.shutdown_counter = 1
         self.protocol = protocol
 
     def retry_shutdown(self):
         self.shutdown_counter += 1
 
         if self.shutdown_counter <= 3:
-            if self.shutdown_timeout is not None:
-                self.shutdown_timeout.cancel()
-                self.shutdown_timeout = None
+            if self.shutdown_timer is not None:
+                self.shutdown_timer.cancel()
+                self.shutdown_timer = None
             logger.debug('{} side retrying shutdown timer for {} seconds'.format(self._mode, SHUTDOWN_TIMEOUT))
-            self.shutdown_timeout = threading.Timer(SHUTDOWN_TIMEOUT, self.retry_shutdown)
-            self.shutdown_timeout.start()
+            self.shutdown_timer = threading.Timer(SHUTDOWN_TIMEOUT, self.retry_shutdown)
+            self.shutdown_timer.start()
         else:
             # shutdown yourself
             self.protocol.doShutdown()
@@ -96,8 +96,8 @@ class PoopTransport(StackingTransport):
             p.hash = ShutdownPacket.DEFAULT_DATAHASH
             p.hash = getHash(p.__serialize__())
             logger.debug('{} side starting shutdown timer for {} seconds'.format(self._mode, SHUTDOWN_TIMEOUT))
-            self.shutdown_timeout = threading.Timer(SHUTDOWN_TIMEOUT, self.retry_shutdown)
-            self.shutdown_timeout.start()
+            self.shutdown_timer = threading.Timer(SHUTDOWN_TIMEOUT, self.retry_shutdown)
+            self.shutdown_timer.start()
             self.lowerTransport().write(p.__serialize__())
 
     def setMode(self, mode):
@@ -161,8 +161,8 @@ class PoopTransport(StackingTransport):
                          'hash: {}\n'.format(self._mode, self.send_buf[seq].seq, self.send_buf[seq].data, self.send_buf[seq].hash))
             self.lowerTransport().write(self.send_buf[seq].__serialize__())
         if len(self.send_buf) > 0: # if there's anything to send at all
-            self.data_transfer_timeout = threading.Timer(timeout_time, self.write_send_buf)
-            self.data_transfer_timeout.start()
+            self.data_transfer_timer = threading.Timer(DATA_TRANSFER_TIMEOUT, self.write_send_buf)
+            self.data_transfer_timer.start()
 
 
 class PoopHandshakeClientProtocol(StackingProtocol):
@@ -178,8 +178,8 @@ class PoopHandshakeClientProtocol(StackingProtocol):
         self.dataq = deque()
         self.send_buf = SizedDict(SD_SIZE)
         self.rcv_fin = None
-
-
+        self.handshake_timer = None
+        self.handshake_counter = 1
 
     def connection_made(self, transport):
         self.transport = transport
@@ -195,11 +195,33 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                      'ack: {}\n'
                      'status: {}\n'
                      'hash: {}\n'.format(self._mode, packet.SYN, packet.ACK, packet.status, packet.hash))
+        self.start_handshake_timer(self.handle_handshake_timeout, packetBytes)
         self.transport.write(packetBytes)
 
+    def handle_handshake_timeout(self, *args, **kwargs):
+        self.handshake_counter += 1
+        if self.handshake_counter <= 3:
+            self.transport.write(kwargs["packet_bytes"])
+        else:
+            self.handle_handshake_error()
+
+    def stop_handshake_timer(self):
+        if self.handshake_timer is not None:
+            logger.debug('{} side stopping handshake timer'.format(self._mode))
+            self.handshake_timer.cancel()
+            self.handshake_timer = None
+
+    def start_handshake_timer(self, func, packet_bytes):
+        self.stop_handshake_timer()
+        logger.debug('{} side starting handshake timer for {} seconds'.format(self._mode, HANDSHAKE_TIMEOUT))
+        self.handshake_timer = threading.Timer(HANDSHAKE_TIMEOUT, func, [], {"packet_bytes": packet_bytes})
+        self.pt.shutdown_timer.start()
+
     def handle_handshake_error(self):
+        self.stop_handshake_timer()
         self.handshakeComplete = False
         self.state = 0
+        self.handshake_counter = 1
 
     def data_received(self, data):
         logger.debug("{} POOP received a buffer of size {}".format(self._mode, len(data)))
@@ -275,17 +297,17 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                         if pkt_hash == gen_hash:
                             logger.debug('{} side received ack = {}'.format(self._mode, pkt.ACK))
                             # cancel timeout if exists
-                            if self.pt.data_transfer_timeout is not None:
-                                self.pt.data_transfer_timeout.cancel()
-                                self.pt.data_transfer_timeout = None
+                            if self.pt.data_transfer_timer is not None:
+                                self.pt.data_transfer_timer.cancel()
+                                self.pt.data_transfer_timer = None
                             if self.pt.closing and pkt.ACK >= self.pt.max_seq: # other side received all data
                                 p = ShutdownPacket()
                                 p.FIN = self.pt.max_seq # how the other side knows until what data packet it has to ack
                                 p.hash = ShutdownPacket.DEFAULT_DATAHASH
                                 p.hash = getHash(p.__serialize__())
                                 logger.debug('{} side starting shutdown timer for {} seconds'.format(self._mode, SHUTDOWN_TIMEOUT))
-                                self.pt.shutdown_timeout = threading.Timer(SHUTDOWN_TIMEOUT, self.doShutdown)
-                                self.pt.shutdown_timeout.start()
+                                self.pt.shutdown_timer = threading.Timer(SHUTDOWN_TIMEOUT, self.doShutdown)
+                                self.pt.shutdown_timer.start()
                                 logger.debug('{} side transport writing FIN = {}'.format(self._mode, self.pt.max_seq))
                                 self.lowerTransport().write(p.__serialize__())
                                 return
@@ -365,6 +387,8 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                     if self.state==1 and pkt.status==HandshakePacket.SUCCESS and \
                             is_set(pkt.SYN, pkt.ACK) and not_set(pkt.error) and pkt_hash == gen_hash:
                         if pkt.ACK==increment_mod(self.syn): # ACK = X + 1
+                            self.stop_handshake_timer()
+                            self.handshake_counter = 1
                             self.ack = pkt.SYN # self.ack = Y, this is the rcv_seq
                             # self.syn = pkt.ACK # self.syn = X+1
                             p = HandshakePacket(status=HandshakePacket.SUCCESS)
@@ -462,13 +486,36 @@ class PoopHandshakeServerProtocol(StackingProtocol):
         self.dataq = deque()
         self.send_buf = SizedDict(SD_SIZE)
         self.rcv_fin = None
+        self.handshake_timer = None
+        self.handshake_counter = 1
 
     def connection_made(self, transport):
         self.transport = transport
 
+    def handle_handshake_timeout(self, *args, **kwargs):
+        self.handshake_counter += 1
+        if self.handshake_counter <= 3:
+            self.transport.write(kwargs["packet_bytes"])
+        else:
+            self.handle_handshake_error()
+
+    def stop_handshake_timer(self):
+        if self.handshake_timer is not None:
+            logger.debug('{} side stopping handshake timer'.format(self._mode))
+            self.handshake_timer.cancel()
+            self.handshake_timer = None
+
+    def start_handshake_timer(self, func, packet_bytes):
+        self.stop_handshake_timer()
+        logger.debug('{} side starting handshake timer for {} seconds'.format(self._mode, HANDSHAKE_TIMEOUT))
+        self.handshake_timer = threading.Timer(HANDSHAKE_TIMEOUT, func, [], {"packet_bytes": packet_bytes})
+        self.pt.shutdown_timer.start()
+
     def handle_handshake_error(self):
+        self.stop_handshake_timer()
         self.handshakeComplete = False
         self.state = 0
+        self.handshake_counter = 1
 
     def data_received(self, data):
         logger.debug("{} POOP received a buffer of size {}".format(self._mode, len(data)))
@@ -543,9 +590,9 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                         if pkt_hash == gen_hash:
                             logger.debug('{} side received ack = {}'.format(self._mode, pkt.ACK))
                             # cancel timeout if exists
-                            if self.pt.data_transfer_timeout is not None:
-                                self.pt.data_transfer_timeout.cancel()
-                                self.pt.data_transfer_timeout = None
+                            if self.pt.data_transfer_timer is not None:
+                                self.pt.data_transfer_timer.cancel()
+                                self.pt.data_transfer_timer = None
                             if self.pt.closing and pkt.ACK >= self.pt.max_seq: # other side received all data
                                 p = ShutdownPacket()
                                 p.FIN = self.pt.max_seq # how the other side knows until what data packet it has to ack
@@ -554,8 +601,8 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                                 logger.debug('{} side transport writing FIN = {}'.format(self._mode, self.pt.max_seq))
                                 self.lowerTransport().write(p.__serialize__())
                                 logger.debug('{} side starting shutdown timer for {} seconds'.format(self._mode, SHUTDOWN_TIMEOUT))
-                                self.pt.shutdown_timeout = threading.Timer(SHUTDOWN_TIMEOUT, self.doShutdown)
-                                self.pt.shutdown_timeout.start()
+                                self.pt.shutdown_timer = threading.Timer(SHUTDOWN_TIMEOUT, self.doShutdown)
+                                self.pt.shutdown_timer.start()
                                 return
                             # if pkt.ack in self.send_buf:
 
@@ -647,7 +694,9 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                                      'ack: {}\n'
                                      'status: {}\n'
                                      'hash: {}\n'.format(self._mode, p.SYN, p.ACK, p.status, p.hash))
-                        self.transport.write(p.__serialize__())
+                        packet_bytes = p.__serialize__()
+                        self.start_handshake_timer(self.handle_handshake_timeout, packet_bytes)
+                        self.transport.write(packet_bytes)
 
                     # should receive syn = (X+1)mod2^32 and ack = (Y+1)mod2^32
                     elif self.state==1 and pkt.status==HandshakePacket.SUCCESS and \
@@ -655,6 +704,8 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                         logger.debug('{} side protocol handshake ack'.format(self._mode))
                         # if handshake successful
                         if pkt.ACK == increment_mod(self.syn) and pkt.SYN == increment_mod(self.ack):
+                            self.stop_handshake_timer()
+                            self.handshake_counter = 1
                             logger.debug('{} side setting handshakeComplete to True'.format(self._mode))
                             self.handshakeComplete = True
 
