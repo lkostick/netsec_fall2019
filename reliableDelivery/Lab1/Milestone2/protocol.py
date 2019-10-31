@@ -159,7 +159,16 @@ class PoopTransport(StackingTransport):
             self.send_buf[self.send_seq] = p
             self.send_seq = increment_mod(self.send_seq)
 
+    def stop_data_transfer_timer(self):
+        if self.data_transfer_timer is not None:
+            logger.debug('{} side stopping data transfer timer'.format(self._mode))
+            self.data_transfer_timer.cancel()
+            self.data_transfer_timer = None
+
     def write_send_buf(self):
+        if self.data_transfer_timer is not None and not self.data_transfer_timer.is_alive():
+            logger.debug('{} side data transfer timeout'.format(self._mode))
+            self.stop_data_transfer_timer()
         logger.debug('{} side transport in write_buf()'.format(self._mode))
         logger.debug('{} side send buf size: {}'.format(self._mode, len(self.send_buf)))
         for seq in iter(self.send_buf):
@@ -171,6 +180,7 @@ class PoopTransport(StackingTransport):
                          'hash: {}\n'.format(self._mode, self.send_buf[seq].seq, self.send_buf[seq].ACK, self.send_buf[seq].data, self.send_buf[seq].hash))
             self.lowerTransport().write(self.send_buf[seq].__serialize__())
         if len(self.send_buf) > 0: # if there's anything to send at all
+            logger.debug('{} side starting data-transfer timer for {} seconds'.format(self._mode, DATA_TRANSFER_TIMEOUT))
             self.data_transfer_timer = threading.Timer(DATA_TRANSFER_TIMEOUT, self.write_send_buf)
             self.data_transfer_timer.start()
 
@@ -313,9 +323,7 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                             logger.debug('{} side received ack = {}'.format(self._mode, pkt.ACK))
                             # cancel timeout if exists
                             if self.pt.data_transfer_timer is not None:
-                                logger.debug('{} stopping data transfer timer'.format(self._mode))
-                                self.pt.data_transfer_timer.cancel()
-                                self.pt.data_transfer_timer = None
+                                self.pt.stop_data_transfer_timer()
                             logger.debug('{} checking if it should do shutdown. checking closing={} and {}>={} and the shutdown_timre_is_None={}'
                                          .format(self._mode, self.pt.closing, pkt.ACK, self.pt.max_seq, self.pt.shutdown_timer is None))
                             if self.pt.closing and pkt.ACK >= self.pt.max_seq: # other side received all data and we received all the acks
@@ -339,7 +347,8 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                                 return
 
                             # if pkt.ack in self.send_buf:
-                            del self.send_buf[pkt.ACK] # don't need to resend acked data packets
+                            if pkt.ACK in self.send_buf:
+                                del self.send_buf[pkt.ACK] # don't need to resend acked data packets
                             self.pt.fill_send_buf() # refill send_buf
                             self.pt.write_send_buf() # resend send_buf
                     else:
@@ -609,9 +618,7 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                             logger.debug('{} side received ack = {}'.format(self._mode, pkt.ACK))
                             # cancel timeout if exists
                             if self.pt.data_transfer_timer is not None:
-                                logger.debug('{} stopping data transfer timer'.format(self._mode))
-                                self.pt.data_transfer_timer.cancel()
-                                self.pt.data_transfer_timer = None
+                                self.pt.stop_data_transfer_timer()
                             logger.debug('{} checking if it should do shutdown. checking closing={} and {}>={} and the shutdown_timre_is_None={}'
                                          .format(self._mode, self.pt.closing, pkt.ACK, self.pt.max_seq, self.pt.shutdown_timer is None))
                             if self.pt.closing and pkt.ACK >= self.pt.max_seq: # other side received all data
@@ -634,8 +641,8 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                                     self.transport.write(packet_bytes)
                                 return
                             # if pkt.ack in self.send_buf:
-
-                            del self.send_buf[pkt.ACK] # don't need to resend acked data packets
+                            if pkt.ACK in self.send_buf:
+                                del self.send_buf[pkt.ACK] # don't need to resend acked data packets
                             self.pt.fill_send_buf() # refill send_buf
                             self.pt.write_send_buf() # resend send_buf
                             # logger.debug('{} side incrementing rcv_seq to {}'.format(self._mode, increment_mod(self.pt.rcv_seq)))
