@@ -116,7 +116,7 @@ class PoopTransport(StackingTransport):
     def setSeq(self, send_seq, rcv_seq):
         self.send_seq = send_seq
         self.rcv_seq = rcv_seq
-        self.max_seq = send_seq
+        self.max_seq = send_seq - 1
 
     def setDataBuf(self, dataq):
         self.dataq = dataq # collections.deque
@@ -318,7 +318,7 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                                 self.pt.data_transfer_timer = None
                             logger.debug('{} checking if it should do shutdown. checking closing={} and {}>={}'
                                          .format(self._mode, self.pt.closing, pkt.ACK, self.pt.max_seq))
-                            if self.pt.closing and pkt.ACK >= self.pt.max_seq: # other side received all data
+                            if self.pt.closing and pkt.ACK >= self.pt.max_seq: # other side received all data and we received all the acks
                                 if self.pt.shutdown_timer is not None:
                                     # A shutdown was already initiated and so this is a shutdown ack
                                     self.pt.stop_shutdown_timer()
