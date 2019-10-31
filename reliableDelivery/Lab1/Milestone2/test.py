@@ -17,7 +17,10 @@ class salam:
         logging.debug('starting timers...')
         self.t1.start()
         time.sleep(3)
-        self.t1.cancel()
+        print(self.t1.is_alive())
+        time.sleep(3)
+        print(self.t1.is_alive())
+        # self.t1.cancel()
         # self.t1.join()
 
 
