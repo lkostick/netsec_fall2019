@@ -326,7 +326,7 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                                 else:
                                     # We wanted to initiate shutdown but there were some packets left in the buffer so we can initiate now
                                     p = ShutdownPacket()
-                                    p.FIN = self.pt.max_seq # how the other side knows until what data packet it has to ack
+                                    p.FIN = self.pt.max_seq + 1 # how the other side knows until what data packet it has to ack
                                     p.hash = ShutdownPacket.DEFAULT_SHUTDOWN_HASH
                                     p.hash = getHash(p.__serialize__())
                                     packet_bytes = p.__serialize__()
@@ -622,7 +622,7 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                                 else:
                                     # We wanted to initiate shutdown but there were some packets left in the buffer so we can initiate now
                                     p = ShutdownPacket()
-                                    p.FIN = self.pt.max_seq # how the other side knows until what data packet it has to ack
+                                    p.FIN = self.pt.max_seq + 1 # how the other side knows until what data packet it has to ack
                                     p.hash = ShutdownPacket.DEFAULT_SHUTDOWN_HASH
                                     p.hash = getHash(p.__serialize__())
                                     packet_bytes = p.__serialize__()
