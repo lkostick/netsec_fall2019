@@ -173,17 +173,17 @@ class PoopTransport(StackingTransport):
         if self.data_transfer_timer is not None and not self.data_transfer_timer.is_alive():
             logger.debug('{} side data transfer timeout'.format(self._mode))
             self.stop_data_transfer_timer()
-        logger.debug('{} side transport in write_buf()'.format(self._mode))
-        logger.debug('{} side send buf size: {}'.format(self._mode, len(self.send_buf)))
-        for seq in iter(self.send_buf):
-            logger.debug('{} side transport writing packet with seq {}'.format(self._mode, seq))
-            logger.debug('{} side PoopTransport.write(). Info:\n'
-                         'seq: {}\n'
-                         'ACK: {}\n'
-                         'data: {}\n'
-                         'hash: {}\n'.format(self._mode, self.send_buf[seq].seq, self.send_buf[seq].ACK, self.send_buf[seq].data, self.send_buf[seq].hash))
-            self.lowerTransport().write(self.send_buf[seq].__serialize__())
         if len(self.send_buf) > 0 and self.data_transfer_timer is None: # if there's anything to send at all
+            logger.debug('{} side transport in write_buf()'.format(self._mode))
+            logger.debug('{} side send buf size: {}'.format(self._mode, len(self.send_buf)))
+            for seq in iter(self.send_buf):
+                logger.debug('{} side transport writing packet with seq {}'.format(self._mode, seq))
+                logger.debug('{} side PoopTransport.write(). Info:\n'
+                             'seq: {}\n'
+                             'ACK: {}\n'
+                             'data: {}\n'
+                             'hash: {}\n'.format(self._mode, self.send_buf[seq].seq, self.send_buf[seq].ACK, self.send_buf[seq].data, self.send_buf[seq].hash))
+                self.lowerTransport().write(self.send_buf[seq].__serialize__())
             logger.debug('{} side starting data-transfer timer for {} seconds'.format(self._mode, DATA_TRANSFER_TIMEOUT))
             self.data_transfer_timer = threading.Timer(DATA_TRANSFER_TIMEOUT, self.write_send_buf)
             self.data_transfer_timer.start()
