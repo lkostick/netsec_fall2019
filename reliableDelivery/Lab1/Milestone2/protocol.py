@@ -166,6 +166,10 @@ class PoopTransport(StackingTransport):
             self.data_transfer_timer = None
 
     def write_send_buf(self):
+        logger.debug('{}'.format(self.data_transfer_timer))
+        if self.data_transfer_timer is not None:
+            logger.debug('{}'.format(self.data_transfer_timer.is_alive()))
+
         if self.data_transfer_timer is not None and not self.data_transfer_timer.is_alive():
             logger.debug('{} side data transfer timeout'.format(self._mode))
             self.stop_data_transfer_timer()
