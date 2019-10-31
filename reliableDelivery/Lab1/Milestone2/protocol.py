@@ -347,8 +347,7 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                                 return
 
                             # if pkt.ack in self.send_buf:
-                            if pkt.ACK in self.send_buf:
-                                del self.send_buf[pkt.ACK] # don't need to resend acked data packets
+                            del self.send_buf[pkt.ACK] # don't need to resend acked data packets
                             self.pt.fill_send_buf() # refill send_buf
                             self.pt.write_send_buf() # resend send_buf
                     else:
@@ -641,8 +640,7 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                                     self.transport.write(packet_bytes)
                                 return
                             # if pkt.ack in self.send_buf:
-                            if pkt.ACK in self.send_buf:
-                                del self.send_buf[pkt.ACK] # don't need to resend acked data packets
+                            del self.send_buf[pkt.ACK] # don't need to resend acked data packets
                             self.pt.fill_send_buf() # refill send_buf
                             self.pt.write_send_buf() # resend send_buf
                             # logger.debug('{} side incrementing rcv_seq to {}'.format(self._mode, increment_mod(self.pt.rcv_seq)))
