@@ -338,7 +338,7 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                                     logger.debug("{} side sending shutdown packet: Info:\n"
                                                  "FIN: {}\n"
                                                  "hash: {}\n".format(self._mode, p.FIN, p.hash))
-                                    self.lowerTransport().write(packet_bytes)
+                                    self.transport.write(packet_bytes)
                                 return
 
                             # if pkt.ack in self.send_buf:
@@ -637,7 +637,7 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                                     logger.debug("{} side sending shutdown packet: Info:\n"
                                                  "FIN: {}\n"
                                                  "hash: {}\n".format(self._mode, p.FIN, p.hash))
-                                    self.lowerTransport().write(packet_bytes)
+                                    self.transport.write(packet_bytes)
                                 return
                             # if pkt.ack in self.send_buf:
 
