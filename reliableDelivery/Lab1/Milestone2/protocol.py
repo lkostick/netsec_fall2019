@@ -327,7 +327,7 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                                     # We wanted to initiate shutdown but there were some packets left in the buffer so we can initiate now
                                     p = ShutdownPacket()
                                     p.FIN = self.pt.max_seq # how the other side knows until what data packet it has to ack
-                                    p.hash = ShutdownPacket.DEFAULT_DATAHASH
+                                    p.hash = ShutdownPacket.DEFAULT_SHUTDOWN_HASH
                                     p.hash = getHash(p.__serialize__())
                                     logger.debug('{} side starting shutdown timer for {} seconds'.format(self._mode, SHUTDOWN_TIMEOUT))
                                     self.pt.shutdown_timer = threading.Timer(SHUTDOWN_TIMEOUT, self.doShutdown)
@@ -335,6 +335,9 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                                     packet_bytes = p.__serialize__()
                                     self.pt.start_shutdown_timer(self.doShutdown, packet_bytes)
                                     logger.debug('{} side transport writing FIN = {}'.format(self._mode, self.pt.max_seq))
+                                    logger.debug("{} side sending shutdown packet: Info:\n"
+                                                 "FIN: {}\n"
+                                                 "hash: {}\n".format(self._mode, p.FIN, p.hash))
                                     self.lowerTransport().write(packet_bytes)
                                 return
 
@@ -623,7 +626,7 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                                     # We wanted to initiate shutdown but there were some packets left in the buffer so we can initiate now
                                     p = ShutdownPacket()
                                     p.FIN = self.pt.max_seq # how the other side knows until what data packet it has to ack
-                                    p.hash = ShutdownPacket.DEFAULT_DATAHASH
+                                    p.hash = ShutdownPacket.DEFAULT_SHUTDOWN_HASH
                                     p.hash = getHash(p.__serialize__())
                                     logger.debug('{} side starting shutdown timer for {} seconds'.format(self._mode, SHUTDOWN_TIMEOUT))
                                     self.pt.shutdown_timer = threading.Timer(SHUTDOWN_TIMEOUT, self.doShutdown)
@@ -631,6 +634,9 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                                     packet_bytes = p.__serialize__()
                                     self.pt.start_shutdown_timer(self.doShutdown, packet_bytes)
                                     logger.debug('{} side transport writing FIN = {}'.format(self._mode, self.pt.max_seq))
+                                    logger.debug("{} side sending shutdown packet: Info:\n"
+                                                 "FIN: {}\n"
+                                                 "hash: {}\n".format(self._mode, p.FIN, p.hash))
                                     self.lowerTransport().write(packet_bytes)
                                 return
                             # if pkt.ack in self.send_buf:
