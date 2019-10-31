@@ -306,15 +306,18 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                         gen_hash = getHash(pkt.__serialize__()) # generated datahash
 
                         # logger.debug('{} side checking {} == {}'.format(self._mode, pkt.datahash, datahash))
-                        logger.debug('{} side checking {} == {}'.format(self._mode, pkt_hash, gen_hash))
+                        logger.debug('{} side checking hashes {} == {}'.format(self._mode, pkt_hash, gen_hash))
                         # if pkt.datahash == datahash:
                         # if not corrupted
                         if pkt_hash == gen_hash:
                             logger.debug('{} side received ack = {}'.format(self._mode, pkt.ACK))
                             # cancel timeout if exists
                             if self.pt.data_transfer_timer is not None:
+                                logger.debug('{} stopping data transfer timer'.format(self._mode))
                                 self.pt.data_transfer_timer.cancel()
                                 self.pt.data_transfer_timer = None
+                            logger.debug('{} checking if it should do shutdown. checking closing={} and {}>={}'
+                                         .format(self._mode, self.pt.closing, pkt.ACK, self.pt.max_seq))
                             if self.pt.closing and pkt.ACK >= self.pt.max_seq: # other side received all data
                                 if self.pt.shutdown_timer is not None:
                                     # A shutdown was already initiated and so this is a shutdown ack
@@ -599,15 +602,18 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                         gen_hash = getHash(pkt.__serialize__()) # generated datahash
 
                         # logger.debug('{} side checking {} == {}'.format(self._mode, pkt.datahash, datahash))
-                        logger.debug('{} side checking {} == {}'.format(self._mode, pkt_hash, gen_hash))
+                        logger.debug('{} side checking hashes {} == {}'.format(self._mode, pkt_hash, gen_hash))
                         # if pkt.datahash == datahash:
                         # if not corrupted
                         if pkt_hash == gen_hash:
                             logger.debug('{} side received ack = {}'.format(self._mode, pkt.ACK))
                             # cancel timeout if exists
                             if self.pt.data_transfer_timer is not None:
+                                logger.debug('{} stopping data transfer timer'.format(self._mode))
                                 self.pt.data_transfer_timer.cancel()
                                 self.pt.data_transfer_timer = None
+                            logger.debug('{} checking if it should do shutdown. checking closing={} and {}>={}'
+                                         .format(self._mode, self.pt.closing, pkt.ACK, self.pt.max_seq))
                             if self.pt.closing and pkt.ACK >= self.pt.max_seq: # other side received all data
                                 if self.pt.shutdown_timer is not None:
                                     # A shutdown was already initiated and so this is a shutdown ack
