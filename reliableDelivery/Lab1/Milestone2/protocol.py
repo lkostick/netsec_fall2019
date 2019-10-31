@@ -158,6 +158,7 @@ class PoopTransport(StackingTransport):
             p.hash = getHash(p.__serialize__())
             self.send_buf[self.send_seq] = p
             self.send_seq = increment_mod(self.send_seq)
+            logger.debug('ack: {}'.format(p.ACK))
 
     def write_send_buf(self):
         logger.debug('{} side transport in write_buf()'.format(self._mode))
