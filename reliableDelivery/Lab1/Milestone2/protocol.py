@@ -137,7 +137,7 @@ class PoopTransport(StackingTransport):
         j = MTU
         n = data_len // MTU
         n += 1 if data_len % MTU > 0 else 0
-        logger.debug('{} side n = {}'.format(self._mode, n))
+        logger.debug('{} side number of packets representing one data = {}'.format(self._mode, n))
         for _ in range(n):
             p_data = data[i:min(j, data_len)]
             logger.debug('{} side transport, iteration {}, appending to dataq a data chunk of size {}'.format(self._mode, _, len(p_data)))
@@ -166,8 +166,9 @@ class PoopTransport(StackingTransport):
             logger.debug('{} side transport writing packet with seq {}'.format(self._mode, seq))
             logger.debug('{} side PoopTransport.write(). Info:\n'
                          'seq: {}\n'
+                         'ACK: {}'
                          'data: {}\n'
-                         'hash: {}\n'.format(self._mode, self.send_buf[seq].seq, self.send_buf[seq].data, self.send_buf[seq].hash))
+                         'hash: {}\n'.format(self._mode, self.send_buf[seq].seq, self._mode, self.send_buf[seq].ACK, self.send_buf[seq].data, self.send_buf[seq].hash))
             self.lowerTransport().write(self.send_buf[seq].__serialize__())
         if len(self.send_buf) > 0: # if there's anything to send at all
             self.data_transfer_timer = threading.Timer(DATA_TRANSFER_TIMEOUT, self.write_send_buf)
@@ -270,6 +271,11 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                                 ack_p = DataPacket(ACK=pkt.seq)
                                 ack_p.hash = DataPacket.DEFAULT_DATAHASH
                                 ack_p.hash = getHash(ack_p.__serialize__())
+                                logger.debug("{} side sending data packet ack: Info:\n"
+                                             "seq: {}\n"
+                                             "ack: {}\n"
+                                             "data: {}\n"
+                                             "hash: {}\n".format(self._mode, ack_p.seq, ack_p.ACK, ack_p.data, ack_p.hash))
                                 self.transport.write(ack_p.__serialize__())
                                 logger.debug('{} side setting rcv_seq = {}'.format(self._mode, increment_mod(self.pt.rcv_seq)))
                                 self.pt.rcv_seq = increment_mod(self.pt.rcv_seq)
@@ -559,6 +565,11 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                                 ack_p = DataPacket(ACK=pkt.seq)
                                 ack_p.hash = DataPacket.DEFAULT_DATAHASH
                                 ack_p.hash = getHash(ack_p.__serialize__())
+                                logger.debug("{} side sending data packet ack: Info:\n"
+                                             "seq: {}\n"
+                                             "ack: {}\n"
+                                             "data: {}\n"
+                                             "hash: {}\n".format(self._mode, ack_p.seq, ack_p.ACK, ack_p.data, ack_p.hash))
                                 self.transport.write(ack_p.__serialize__())
                                 logger.debug('{} side setting rcv_seq = {}'.format(self._mode, increment_mod(self.pt.rcv_seq)))
                                 self.pt.rcv_seq = increment_mod(self.pt.rcv_seq)
