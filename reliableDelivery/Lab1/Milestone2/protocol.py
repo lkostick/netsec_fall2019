@@ -316,8 +316,8 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                                 logger.debug('{} stopping data transfer timer'.format(self._mode))
                                 self.pt.data_transfer_timer.cancel()
                                 self.pt.data_transfer_timer = None
-                            logger.debug('{} checking if it should do shutdown. checking closing={} and {}>={}'
-                                         .format(self._mode, self.pt.closing, pkt.ACK, self.pt.max_seq))
+                            logger.debug('{} checking if it should do shutdown. checking closing={} and {}>={} and the shutdown_timre_is_None={}'
+                                         .format(self._mode, self.pt.closing, pkt.ACK, self.pt.max_seq, self.pt.shutdown_timer is None))
                             if self.pt.closing and pkt.ACK >= self.pt.max_seq: # other side received all data and we received all the acks
                                 if self.pt.shutdown_timer is not None:
                                     # A shutdown was already initiated and so this is a shutdown ack
@@ -612,8 +612,8 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                                 logger.debug('{} stopping data transfer timer'.format(self._mode))
                                 self.pt.data_transfer_timer.cancel()
                                 self.pt.data_transfer_timer = None
-                            logger.debug('{} checking if it should do shutdown. checking closing={} and {}>={}'
-                                         .format(self._mode, self.pt.closing, pkt.ACK, self.pt.max_seq))
+                            logger.debug('{} checking if it should do shutdown. checking closing={} and {}>={} and the shutdown_timre_is_None={}'
+                                         .format(self._mode, self.pt.closing, pkt.ACK, self.pt.max_seq, self.pt.shutdown_timer is None))
                             if self.pt.closing and pkt.ACK >= self.pt.max_seq: # other side received all data
                                 if self.pt.shutdown_timer is not None:
                                     # A shutdown was already initiated and so this is a shutdown ack
