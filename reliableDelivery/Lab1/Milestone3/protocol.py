@@ -447,12 +447,12 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                             # What should be done if the error is noticed by the client side
                             self.handle_handshake_error()
                             # ack does not match syn+1
-                            p = HandshakePacket(status=HandshakePacket.ERROR, hash='')
+                            p = HandshakePacket(status=HandshakePacket.ERROR, hash=0)
                             logger.debug('{} side sending packet. Info:\n'
                                          'syn: {}\n'
                                          'ack: {}\n'
                                          'status: {}\n'
-                                         'hash: {}\n'.format(self._mode, p.syn, p.ack, p.status, p.hash))
+                                         'hash: {}\n'.format(self._mode, p.SYN, p.ACK, p.status, p.hash))
                             self.transport.write(p.__serialize__())
                     elif pkt.status == HandshakePacket.ERROR:
                         logger.debug('Client: An error packet was received from the server: ' + str(pkt.error))
@@ -463,13 +463,13 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                         # What should be done if the error is noticed by the client side
                         # either state != 1 or status != SUCCESS or syn not set or ack not set
                         self.handle_handshake_error()
-                        p = HandshakePacket(status=HandshakePacket.ERROR, hash='')
+                        p = HandshakePacket(status=HandshakePacket.ERROR, hash=0)
                         logger.debug(
                             '{} side sending handshake packet:\n'
                             'syn: {}\n'
                             'ack: {}\n'
                             'status: {}\n'
-                            'hash: {}\n'.format(self._mode, p.syn, p.ack, p.status, p.hash))
+                            'hash: {}\n'.format(self._mode, p.SYN, p.ACK, p.status, p.hash))
                         self.transport.write(p.__serialize__())
                 else:
                     # not the PoopHandshakePacket: ignore
@@ -750,13 +750,13 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                             # What should be done if the error is noticed by the server side
                             # ack != self.syn + 1 or syn != self.ack + 1
                             self.handle_handshake_error()
-                            p = HandshakePacket(status=HandshakePacket.ERROR, hash='')
+                            p = HandshakePacket(status=HandshakePacket.ERROR, hash=0)
                             logger.debug(
                                 '{} side sending packet:\n'
                                 'syn: {}\n'
                                 'ack: {}\n'
                                 'status: {}\n'
-                                'hash: {}\n'.format(self._mode, p.syn, p.ack, p.status, p.hash))
+                                'hash: {}\n'.format(self._mode, p.SYN, p.ACK, p.status, p.hash))
                             self.transport.write(p.__serialize__())
                     elif pkt.status == HandshakePacket.ERROR:
                         logger.debug('Server: An error packet was received from the client during handshake: ' + str(pkt.error))
@@ -767,13 +767,13 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                         # What should be done if the error is noticed by the server side
                         # invalid state and PoopHandshakePacket.status combination
                         self.handle_handshake_error()
-                        p = HandshakePacket(status=HandshakePacket.ERROR, hash='')
+                        p = HandshakePacket(status=HandshakePacket.ERROR, hash=0)
                         logger.debug(
                             '{} side sending handshake packet:\n'
                             'syn: {}\n'
                             'ack: {}\n'
                             'status: {}\n'
-                            'hash: {}\n'.format(self._mode, p.syn, p.ack, p.status, p.hash))
+                            'hash: {}\n'.format(self._mode, p.SYN, p.ACK, p.status, p.hash))
                         self.transport.write(p.__serialize__())
                 else:
                     # What should be done if the error is noticed by the server side
