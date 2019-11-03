@@ -331,6 +331,9 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                             logger.debug('{} checking if it should do shutdown. checking closing={} and {}>={} and the shutdown_timre_is_None={}'
                                          .format(self._mode, self.pt.closing, pkt.ACK, self.pt.max_seq, self.pt.shutdown_timer is None))
                             if self.pt.closing and pkt.ACK >= self.pt.max_seq: # other side received all data and we received all the acks
+                                self.doShutdown()
+                                return
+                            else:
                                 if self.pt.shutdown_timer is not None:
                                     # A shutdown was already initiated and so this is a shutdown ack
                                     self.pt.stop_shutdown_timer()
@@ -339,6 +342,7 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                                     # We wanted to initiate shutdown but there were some packets left in the buffer so we can initiate now
                                     p = ShutdownPacket()
                                     p.FIN = self.pt.max_seq + 1 # how the other side knows until what data packet it has to ack
+                                    p.status = 1
                                     p.hash = ShutdownPacket.DEFAULT_SHUTDOWN_HASH
                                     p.hash = getHash(p.__serialize__())
                                     packet_bytes = p.__serialize__()
@@ -412,13 +416,14 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                     pkt.hash = HandshakePacket.DEFAULT_HANDSHAKE_HASH
                     gen_hash = getHash(pkt.__serialize__())
                     if self.state==1 and pkt.status==HandshakePacket.SUCCESS and \
-                            is_set(pkt.SYN, pkt.ACK) and pkt_hash == gen_hash:
+                            is_set(pkt.SYN, pkt.ACK) and ( (pkt_hash == gen_hash) or pkt_hash ==0):
                         if pkt.ACK==increment_mod(self.syn): # ACK = X + 1
                             self.stop_handshake_timer()
                             self.handshake_counter = 1
                             self.ack = pkt.SYN # self.ack = Y, this is the rcv_seq
                             # self.syn = pkt.ACK # self.syn = X+1
-                            p = HandshakePacket(status=HandshakePacket.SUCCESS)
+                            #p = HandshakePacket(status=HandshakePacket.SUCCESS)
+                            p = HandshakePacket(status=0)
                             p.SYN = increment_mod(self.syn) # p.syn = X+1
                             p.ACK = increment_mod(self.ack) # p.ack = Y+1
                             p.hash = HandshakePacket.DEFAULT_HANDSHAKE_HASH
@@ -625,6 +630,9 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                             logger.debug('{} checking if it should do shutdown. checking closing={} and {}>={} and the shutdown_timre_is_None={}'
                                          .format(self._mode, self.pt.closing, pkt.ACK, self.pt.max_seq, self.pt.shutdown_timer is None))
                             if self.pt.closing and pkt.ACK >= self.pt.max_seq: # other side received all data
+                                self.doShutdown()
+                                return
+                            else:
                                 if self.pt.shutdown_timer is not None:
                                     # A shutdown was already initiated and so this is a shutdown ack
                                     self.pt.stop_shutdown_timer()
@@ -633,6 +641,7 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                                     # We wanted to initiate shutdown but there were some packets left in the buffer so we can initiate now
                                     p = ShutdownPacket()
                                     p.FIN = self.pt.max_seq + 1 # how the other side knows until what data packet it has to ack
+                                    p.status = 0
                                     p.hash = ShutdownPacket.DEFAULT_SHUTDOWN_HASH
                                     p.hash = getHash(p.__serialize__())
                                     packet_bytes = p.__serialize__()
@@ -675,9 +684,10 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                         if pkt.FIN <= self.pt.rcv_seq:
                             # matches, got all necessary data
                             logger.debug('{} side sending FACK. ack = {}'.format(self._mode, self.pt.rcv_seq))
-                            ack_p = DataPacket(ACK=pkt.FIN)
+                            #ack_p = DataPacket(ACK=pkt.FIN)
+                            self.sendFACK(pkt.FIN)
                             logger.debug('{} side shutting down.'.format(self._mode))
-                            self.doShutdown()
+                            #self.doShutdown()
                         else: # probably will never be reached
                             # did not receive everything
                             self.rcv_fin = pkt.fin
@@ -783,6 +793,18 @@ class PoopHandshakeServerProtocol(StackingProtocol):
     def connection_lost(self, exc):
         logger.debug("{} POOP connection lost. Shutting down higher layer.".format(self._mode))
         self.higherProtocol().connection_lost(exc)
+
+    def sendFACK(self, ack):
+        logger.debug('{} side sending FACK = {}'.format(self._mode, self.pt.rcv_seq))
+        p = DataPacket(ACK=ack)
+        p.hash = DataPacket.DEFAULT_DATAHASH
+        p.hash = getHash(p.__serialize__())
+        #p = ShutdownPacket()
+        #p.FACK = self.pt.rcv_seq
+        #p.hash = ShutdownPacket.DEFAULT_DATAHASH
+        #p.hash = getHash(p.__serialize__())
+        self.transport.write(p.__serialize__())
+        self.doShutdown()
         
     def doShutdown(self):
         self.pt.stop_shutdown_timer()

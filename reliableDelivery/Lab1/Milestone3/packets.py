@@ -51,5 +51,6 @@ class ShutdownPacket(PoopPacketType):
 
     FIELDS = [
         ("FIN", UINT32),
+        ("status", UINT8({Optional: True})),
         ("hash", UINT32)
     ]
