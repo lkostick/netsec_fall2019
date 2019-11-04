@@ -245,7 +245,7 @@ class PoopHandshakeClientProtocol(StackingProtocol):
     def handle_handshake_error(self):
         self.stop_handshake_timer()
         self.handshakeComplete = False
-        self.state = 0
+        # self.state = 0
         self.handshake_counter = 1
 
     def data_received(self, data):
@@ -446,14 +446,18 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                         else:
                             # What should be done if the error is noticed by the client side
                             self.handle_handshake_error()
+                            # let it do the timeout
+                            self.handle_handshake_error()
+                            error = "ack does not match syn+1"
+                            logger.debug('{} side error: {}'.format(self._mode, error))
                             # ack does not match syn+1
-                            p = HandshakePacket(status=HandshakePacket.ERROR, hash=0)
-                            logger.debug('{} side sending packet. Info:\n'
-                                         'syn: {}\n'
-                                         'ack: {}\n'
-                                         'status: {}\n'
-                                         'hash: {}\n'.format(self._mode, p.SYN, p.ACK, p.status, p.hash))
-                            self.transport.write(p.__serialize__())
+                            # p = HandshakePacket(status=HandshakePacket.ERROR, hash=0)
+                            # logger.debug('{} side sending packet. Info:\n'
+                            #              'syn: {}\n'
+                            #              'ack: {}\n'
+                            #              'status: {}\n'
+                            #              'hash: {}\n'.format(self._mode, p.SYN, p.ACK, p.status, p.hash))
+                            # self.transport.write(p.__serialize__())
                     elif pkt.status == HandshakePacket.ERROR:
                         logger.debug('Client: An error packet was received from the server: ' + str(pkt.error))
                         # What should be done if the server has identified the error and sent the client an error packet
@@ -461,19 +465,23 @@ class PoopHandshakeClientProtocol(StackingProtocol):
 
                     else:
                         # What should be done if the error is noticed by the client side
-                        # either state != 1 or status != SUCCESS or syn not set or ack not set
+                        # let it do the timeout
                         self.handle_handshake_error()
-                        p = HandshakePacket(status=HandshakePacket.ERROR, hash=0)
-                        logger.debug(
-                            '{} side sending handshake packet:\n'
-                            'syn: {}\n'
-                            'ack: {}\n'
-                            'status: {}\n'
-                            'hash: {}\n'.format(self._mode, p.SYN, p.ACK, p.status, p.hash))
-                        self.transport.write(p.__serialize__())
+                        error = "either state != 1 or status != SUCCESS or syn not set or ack not set"
+                        logger.debug('{} side error: {}'.format(self._mode, error))
+                        # p = HandshakePacket(status=HandshakePacket.ERROR, hash=0)
+                        # logger.debug(
+                        #     '{} side sending handshake packet:\n'
+                        #     'syn: {}\n'
+                        #     'ack: {}\n'
+                        #     'status: {}\n'
+                        #     'hash: {}\n'.format(self._mode, p.SYN, p.ACK, p.status, p.hash))
+                        # self.transport.write(p.__serialize__())
                 else:
                     # not the PoopHandshakePacket: ignore
-                    pass
+                    # let it do the timeout
+                    error = "not the PoopHandshakePacket: ignore"
+                    logger.debug('{} side error: {}'.format(self._mode, error))
 
     def connection_lost(self, exc):
         logger.debug("{} POOP connection lost. Shutting down higher layer.".format(self._mode))
@@ -540,7 +548,7 @@ class PoopHandshakeServerProtocol(StackingProtocol):
     def handle_handshake_error(self):
         self.stop_handshake_timer()
         self.handshakeComplete = False
-        self.state = 0
+        # self.state = 0
         self.handshake_counter = 1
 
     def data_received(self, data):
@@ -750,14 +758,17 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                             # What should be done if the error is noticed by the server side
                             # ack != self.syn + 1 or syn != self.ack + 1
                             self.handle_handshake_error()
-                            p = HandshakePacket(status=HandshakePacket.ERROR, hash=0)
-                            logger.debug(
-                                '{} side sending packet:\n'
-                                'syn: {}\n'
-                                'ack: {}\n'
-                                'status: {}\n'
-                                'hash: {}\n'.format(self._mode, p.SYN, p.ACK, p.status, p.hash))
-                            self.transport.write(p.__serialize__())
+                            error = "ack != self.syn + 1 or syn != self.ack + 1"
+                            logger.debug('{} side error: {}'.format(self._mode, error))
+
+                            # p = HandshakePacket(status=HandshakePacket.ERROR, hash=0)
+                            # logger.debug(
+                            #     '{} side sending packet:\n'
+                            #     'syn: {}\n'
+                            #     'ack: {}\n'
+                            #     'status: {}\n'
+                            #     'hash: {}\n'.format(self._mode, p.SYN, p.ACK, p.status, p.hash))
+                            # self.transport.write(p.__serialize__())
                     elif pkt.status == HandshakePacket.ERROR:
                         logger.debug('Server: An error packet was received from the client during handshake: ' + str(pkt.error))
                         self.handle_handshake_error()
@@ -767,17 +778,21 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                         # What should be done if the error is noticed by the server side
                         # invalid state and PoopHandshakePacket.status combination
                         self.handle_handshake_error()
-                        p = HandshakePacket(status=HandshakePacket.ERROR, hash=0)
-                        logger.debug(
-                            '{} side sending handshake packet:\n'
-                            'syn: {}\n'
-                            'ack: {}\n'
-                            'status: {}\n'
-                            'hash: {}\n'.format(self._mode, p.SYN, p.ACK, p.status, p.hash))
-                        self.transport.write(p.__serialize__())
+                        error = "invalid state and PoopHandshakePacket.status combination"
+                        logger.debug('{} side error: {}'.format(self._mode, error))
+                        # p = HandshakePacket(status=HandshakePacket.ERROR, hash=0)
+                        # logger.debug(
+                        #     '{} side sending handshake packet:\n'
+                        #     'syn: {}\n'
+                        #     'ack: {}\n'
+                        #     'status: {}\n'
+                        #     'hash: {}\n'.format(self._mode, p.SYN, p.ACK, p.status, p.hash))
+                        # self.transport.write(p.__serialize__())
                 else:
                     # What should be done if the error is noticed by the server side
                     # not the PoopHandshakePacket: ignore
+                    error = "not the PoopHandshakePacket: ignore"
+                    logger.debug('{} side error: {}'.format(self._mode, error))
                     pass
 
     def connection_lost(self, exc):
