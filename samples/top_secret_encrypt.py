@@ -1,3 +1,5 @@
+# https://cryptography.io/en/latest/hazmat/primitives/symmetric-encryption/
+
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
 
@@ -13,8 +15,7 @@ aesDec = aesCipher.decryptor()
 import sys
 
 with open(sys.argv[1], 'rb') as f:
-	img = f.read()
-	header = img[:54]
+	img = f.read()`
 	img = img[54:]
 
 
