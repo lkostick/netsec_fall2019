@@ -367,6 +367,12 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                     if self.pt.closing:
                         # if shutdown initated by self, can close on receiving FIN || FIN/ACK
                         logger.debug('{} side received shutdown packet while closing.'.format(self._mode))
+                        logger.debug('{} side sending FACK. ack = {}'.format(self._mode, pkt.FIN))
+                        ack_p = DataPacket(ACK=pkt.FIN)
+                        ack_p.hash = DataPacket.DEFAULT_DATAHASH
+                        ack_p.hash = getHash(ack_p.__serialize__())
+                        self.transport.write(ack_p.__serialize__())
+                        logger.debug('{} side shutting down.'.format(self._mode))
                         self.doShutdown()
                         return
                     pkt_hash = pkt.hash # received datahash
@@ -379,7 +385,7 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                         # logger.debug('{} checking FIN+1 = rcv_seq')
                         if pkt.FIN <= self.pt.rcv_seq:
                             # matches, got all necessary data
-                            logger.debug('{} side sending FACK. ack = {}'.format(self._mode, self.pt.rcv_seq))
+                            logger.debug('{} side sending FACK. ack = {}'.format(self._mode, pkt.FIN))
                             ack_p = DataPacket(ACK=pkt.FIN)
                             logger.debug('{} side shutting down.'.format(self._mode))
                             self.doShutdown()
@@ -487,16 +493,6 @@ class PoopHandshakeClientProtocol(StackingProtocol):
     def connection_lost(self, exc):
         logger.debug("{} POOP connection lost. Shutting down higher layer.".format(self._mode))
         self.higherProtocol().connection_lost(exc)
-
-
-    def sendFACK(self):
-        logger.debug('{} side sending FACK = {}'.format(self._mode, self.pt.rcv_seq))
-        p = ShutdownPacket()
-        p.FACK = self.pt.rcv_seq
-        p.hash = ShutdownPacket.DEFAULT_DATAHASH
-        p.hash = getHash(p.__serialize__())
-        self.transport.write(p.__serialize__())
-        self.doShutdown()
         
     def doShutdown(self):
         self.pt.stop_shutdown_timer()
@@ -672,6 +668,12 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                     if self.pt.closing:
                         # if shutdown initated by self, can close on receiving FIN || FIN/ACK
                         logger.debug('{} side received shutdown packet while closing.'.format(self._mode))
+                        logger.debug('{} side sending FACK. ack = {}'.format(self._mode, pkt.FIN))
+                        ack_p = DataPacket(ACK=pkt.FIN)
+                        ack_p.hash = DataPacket.DEFAULT_DATAHASH
+                        ack_p.hash = getHash(ack_p.__serialize__())
+                        self.transport.write(ack_p.__serialize__())
+                        logger.debug('{} side shutting down.'.format(self._mode))
                         self.doShutdown()
                         return
                     pkt_hash = pkt.hash # received datahash
@@ -684,7 +686,7 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                         # logger.debug('{} checking FIN+1 = rcv_seq')
                         if pkt.FIN <= self.pt.rcv_seq:
                             # matches, got all necessary data
-                            logger.debug('{} side sending FACK. ack = {}'.format(self._mode, self.pt.rcv_seq))
+                            logger.debug('{} side sending FACK. ack = {}'.format(self._mode, pkt.FIN))
                             ack_p = DataPacket(ACK=pkt.FIN)
                             logger.debug('{} side shutting down.'.format(self._mode))
                             self.doShutdown()
@@ -695,7 +697,6 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                             ack_p = DataPacket(ACK=self.pt.rcv_seq)
                         ack_p.hash = DataPacket.DEFAULT_DATAHASH
                         ack_p.hash = getHash(ack_p.__serialize__())
-                        # resend last ack
                         self.transport.write(ack_p.__serialize__())
 
                 else:
