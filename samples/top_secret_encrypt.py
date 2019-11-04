@@ -15,7 +15,8 @@ aesDec = aesCipher.decryptor()
 import sys
 
 with open(sys.argv[1], 'rb') as f:
-	img = f.read()`
+	img = f.read()
+	header = img[:54]
 	img = img[54:]
 
 
