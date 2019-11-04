@@ -396,8 +396,17 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                             # matches, got all necessary data
                             logger.debug('{} side sending FACK. ack = {}'.format(self._mode, pkt.FIN))
                             ack_p = DataPacket(ACK=pkt.FIN)
+                            ack_p.hash = DataPacket.DEFAULT_DATAHASH
+                            ack_p.hash = getHash(ack_p.__serialize__())
+                            logger.debug("{} side sending data packet ack: Info:\n"
+                                     "seq: {}\n"
+                                     "ack: {}\n"
+                                     "data: {}\n"
+                                     "hash: {}\n".format(self._mode, ack_p.seq, ack_p.ACK, ack_p.data, ack_p.hash))
+                            self.transport.write(ack_p.__serialize__())
                             logger.debug('{} side shutting down.'.format(self._mode))
                             self.doShutdown()
+                            return #We are done
                         else: # probably will never be reached
                             # did not receive everything
                             self.rcv_fin = pkt.fin
@@ -711,8 +720,16 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                             # matches, got all necessary data
                             logger.debug('{} side sending FACK. ack = {}'.format(self._mode, pkt.FIN))
                             ack_p = DataPacket(ACK=pkt.FIN)
+                            ack_p.hash = DataPacket.DEFAULT_DATAHASH
+                            ack_p.hash = getHash(ack_p.__serialize__())
+                            logger.debug("{} side sending data packet ack: Info:\n"
+                                         "seq: {}\n"
+                                         "ack: {}\n"
+                                         "data: {}\n"
+                                         "hash: {}\n".format(self._mode, ack_p.seq, ack_p.ACK, ack_p.data, ack_p.hash))
                             logger.debug('{} side shutting down.'.format(self._mode))
                             self.doShutdown()
+                            return # We are done
                         else: # probably will never be reached
                             # did not receive everything
                             self.rcv_fin = pkt.fin
