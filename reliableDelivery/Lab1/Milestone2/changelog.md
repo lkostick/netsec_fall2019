@@ -1,0 +1,23 @@
+# Changelog
+
+### Commit: `a5da55105b7d6f53431adc35f38f85b0d8f7ff26`
+* Changed the client `send_seq` to be initialized as `Y`, from `Y+1`
+* Changed the server `send_seq` to be initialized as `X+1`, from `X+2`
+* Datapackets are sent with `send_seq`, THEN `send_seq` is incremented by 1
+  * For example, the first PoopDataPacket (henceforth PDP) sent by the client would have a seq number of `Y`, NOT `Y+1`. Likewise, the first PDP sent by the server would have a seq number of `X+1`, NOT `X+2`
+* Changed the hashing to be hashing over the whole packet, but with the default `datahash` field defined as `0`, of type `UINT32`. On a `transport.write()`, the whole PDP is hashed, then that hash is set as the packet's new datahash. This updated packet is serialized and sent over. On the receiving end, the protocol checks this received packet's datahash with a generated datahash created in the same way: the packet's `datahash` field is set to the default value of 0, and this whole packet is hashed. The received datahash is then compared to the generated datahash.
+* Added a way for written packets to have a MTU. If the higher layer pushes data where `len(data) > MTU`, the data is broken up into `n` chunks `c1..cn` where `len(ci) <= MTU`. This is then sent as `n` PDPs, with all the sequencing and aforementioned hashing, etc.
+
+### Commit: `d76b10c972bde9ac7b3a1f7c03c90a1ce093d969`
+* Added in sending an ack packet where `ack` is set to the received packet's `syn`. For example, if the receiver receives a packet with `syn`=X, it will send back an ack packet with `ack`=X.
+
+### Commit: `9f0995d968d53a8329b302b02fe294250e7a90d0`
+* Renamed `self.transport_protocol` to `self.pt`, short for poop transport.
+* Send buffer and data queue are working. The send buffer max size of `15` that I have set is the default provided by the module `sized_dict.py` (thanks Logan lol). This max size is adjustable by setting `SD_SIZE` to whatever we want.
+* `transport.write()` now behaves differently. It does the following:
+  1. The passed down `data` is still divided into `n` chunks `c1..cn`. Instead of immediately writing these all, they are passed into the data queue `dataq`. The FIFO data structure is specifically chosen so the sender can send the data in a semi-ordered fashion (not 100% ordered when the max send buffer size > 1)
+  2. The send buffer `send_buf` is then populated using the data inside `dataq`. In implementation, this is the `SizedDict` mentioned above. For the key value pair, `K = seq` and `V = packet` where `packet.seq = seq`.
+  3. The send buffer is written to the other side. 
+* Implemented ack'ing, but I haven't tested if it actually works with corrupted packets. As for missing packets, there's still no timeout functionality yet so missing packets would break the current system.
+  * On receiving a data packet, if `pkt.seq == self.pt.rcv_seq` then the receiver sends back an ack packet with `ack = self.pt.rcv_seq`. Else if `pkt.seq != self.pt.rcv_seq`, then the received packet is dropped (we currently do not have a receive buffer implemented). The reason I decided to drop these packets, as opposed to resending the last sent ack is this: I believe that as long as we're removing things from and refilling `self.send_buf` with the appropriate values at the appropriate times, the packet with the `seq` that the receiver is expecting MUST be contained within the send buffer. This means that, assuming no packet corruption or loss, the receiver will get the correct packet because the sender always sends the full send buffer in batch.. which as described above must contain the expected packet. Of course, we still have to deal with corruption and loss. In the case of corruption where `pkt.datahash != expected datahash`, the receiver resends the last successful ack packet... but what if the very first packet recieved was corrupted? Then we can send `(self.pt.rcv_seq - 1) % MAX_UINT32`. Of course, it's a hassle to keep track of if you successfully got your first packet and such. Therefore instead, I've decided to set `self.pt.rcv_seq = decrement_mod(self.pt.rcv_seq)`. Further, on each successful data packet with a correct seq, the receiver will check `pkt.seq == increment_mod(self.pt.rcv_seq)`. Although currently unimplemented, this also means that when checking whether to send back an FIN/ACK, the receiver will similarly check `pkt.fin == increment_mod(self.pt.rcv_seq)`. Please be wary of potential off by one errors.
+  * Going to restress this: THERE IS CURRENTLY NO TIMEOUT FUNCTIONALITY.

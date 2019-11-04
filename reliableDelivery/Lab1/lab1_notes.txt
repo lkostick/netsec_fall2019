@@ -1,3 +1,5 @@
+
+## DONE
 ONE CONSIDERATION/SUGGESTION FROM DR NIELSON ABOUT DATA CORRECTNESS
 Dr. Nielson suggested that hashing just the data field might not be good. Maybe try hashing the whole packet? For example:
 	p = PoopDataPacket(seq=seq, ack=ack, data=data)
@@ -8,17 +10,36 @@ Dr. Nielson suggested that hashing just the data field might not be good. Maybe 
 
 HANDSHAKE
 what do to during an error?
-	timeout/reset?
+	If client recieves bad syn/ack, send init handshakepacket with new syn (which means server must always be listening for a restart)
+	compute final send_seq/rcv_seq through incrementing rather than grabbed from the received packet in case of packet corruption
+
+	Timeout? When? Why?
 
 DATA TRANSMISSION
 duplex & acks
+	## DONE..?
 	each side keeps track of the next expected packet seq number
+	resending lost/incorrect packets
+		If instanceof(received_packet, PDP):
+			check seq == expected seq number
+			If not:
+				resend last sent ack
+			Else:
+				send ack=received_seq
+				expected_seq += 1
 
+	NEED TO DO
+	Timeout? When? Why?
+
+	Extra stuff for later:
+		when sending data, send each packet thrice. The odds of failure (lost/corruption) on all three are much lower, thus less resending
+
+## DONE
 Max Transmission Unit (size of buffer)
-	drop if too big?
-	split into multiple packets with buffersize<=MTU?
+	split into multiple packets with buffersize<=MTU
 
-Window size (how many packets to send before getting an ack)
+# Do after basic stuff is implemented. Basic = sending_window <- 1
+Window size (how many packets to send before getting an ack) 
 
 
 
@@ -29,6 +50,27 @@ SHUTDOWN
 implicit (application layer knows all data sent/received)
 v
 explicit (explicit quit/exit message)
+
+What we think should work - Also, timeouts when? where? why?
+Assume A sends FIN
+A sends FIN=current_seq_num
+B compares pkt.FIN == expected_seq_num
+If match:
+	B sends FIN == current_seq_num
+	        ACK == expected_seq_num
+	Then B closes connection
+Else:
+	B saves pkt.FIN
+	B resends last sent ack 
+	Repeat until saved pkt.FIN val == expected_seq_num (in order to ensure that all data that should be delivered has been delivered)
+
+A receives:
+	case FIN/ACK || FIN:
+		close connection
+	case ACK:
+		some packets were not delivered, so resend unacked packets
+	case data:
+		Drop data
 
 
 From Dr. Nielson:
