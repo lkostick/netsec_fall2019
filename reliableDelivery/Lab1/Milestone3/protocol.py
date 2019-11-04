@@ -23,9 +23,9 @@ MTU = 15000
 SD_SIZE = 1
 
 # Timeout
-DATA_TRANSFER_TIMEOUT = 2
-HANDSHAKE_TIMEOUT = 2
-SHUTDOWN_TIMEOUT = 2
+DATA_TRANSFER_TIMEOUT = 0.5
+HANDSHAKE_TIMEOUT = 0.5
+SHUTDOWN_TIMEOUT = 0.5
 
 '''
 Utility functions
@@ -93,7 +93,7 @@ class PoopTransport(StackingTransport):
         self.shutdown_counter += 1
         if self.shutdown_counter <= 3:
             self.start_shutdown_timer(kwargs["func"], kwargs["packet_bytes"])
-            self.transport.write(kwargs["packet_bytes"])
+            self.lowerTransport().transport.write(kwargs["packet_bytes"])
         else:
             self.protocol.doShutdown()
 
