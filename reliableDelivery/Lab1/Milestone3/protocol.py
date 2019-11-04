@@ -81,7 +81,6 @@ class PoopTransport(StackingTransport):
             p.FIN = self.max_seq
             p.hash = ShutdownPacket.DEFAULT_SHUTDOWN_HASH
             p.hash = getHash(p.__serialize__())
-            logger.debug('{} side starting shutdown timer for {} seconds'.format(self._mode, SHUTDOWN_TIMEOUT))
             packet_bytes = p.__serialize__()
             self.start_shutdown_timer(self.handle_shutdown_timeout, packet_bytes)
             logger.debug('{} side sending FIN packet. Info:\n'
@@ -396,7 +395,7 @@ class PoopHandshakeClientProtocol(StackingProtocol):
 
 
                 else:
-                    error = 'got something other than a PoopDataPacket: ignore'
+                    error = 'got something other than a PoopDataPacket/PoopShutdownPacket: ignore'
                     logger.debug(
                         '{} side ERROR = {}'.format(self._mode, error))
 
@@ -700,7 +699,7 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                         self.transport.write(ack_p.__serialize__())
 
                 else:
-                    error = 'got something other than a PoopDataPacket: ignore'
+                    error = 'got something other than a PoopDataPacket/PoopShutdownPacket: ignore'
                     logger.debug(
                         '{} side ERROR = {}'.format(self._mode, error))
         # do handshake
