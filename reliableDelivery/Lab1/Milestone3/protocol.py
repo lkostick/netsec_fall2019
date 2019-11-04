@@ -165,9 +165,8 @@ class PoopTransport(StackingTransport):
             self.data_transfer_timer = None
 
     def write_send_buf(self):
-        logger.debug('{}'.format(self.data_transfer_timer))
         if self.data_transfer_timer is not None:
-            logger.debug('{}'.format(self.data_transfer_timer.is_alive()))
+            logger.debug('{} side data_transfer_timer is alive? {}'.format(self._mode, self.data_transfer_timer.is_alive()))
 
         if self.data_transfer_timer is not None and not self.data_transfer_timer.is_alive():
             logger.debug('{} side data transfer timeout'.format(self._mode))
@@ -305,6 +304,11 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                                 ack_p = DataPacket(ack=self.pt.rcv_seq)
                                 ack_p.hash = DataPacket.DEFAULT_DATAHASH
                                 ack_p.hash = getHash(ack_p.__serialize__())
+                                logger.debug("{} side sending data packet ack: Info:\n"
+                                             "seq: {}\n"
+                                             "ack: {}\n"
+                                             "data: {}\n"
+                                             "hash: {}\n".format(self._mode, ack_p.seq, ack_p.ACK, ack_p.data, ack_p.hash))
                                 self.transport.write(ack_p.__serialize__())
                         else:
                             # just drop the packet
@@ -615,6 +619,11 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                                 ack_p = DataPacket(ack=self.pt.rcv_seq)
                                 ack_p.hash = DataPacket.DEFAULT_DATAHASH
                                 ack_p.hash = getHash(ack_p.__serialize__())
+                                logger.debug("{} side sending data packet ack: Info:\n"
+                                             "seq: {}\n"
+                                             "ack: {}\n"
+                                             "data: {}\n"
+                                             "hash: {}\n".format(self._mode, ack_p.seq, ack_p.ACK, ack_p.data, ack_p.hash))
                                 self.transport.write(ack_p.__serialize__())
                         else:
                             # just drop the packet
