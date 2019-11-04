@@ -115,7 +115,7 @@ class PoopTransport(StackingTransport):
     def setSeq(self, send_seq, rcv_seq):
         self.send_seq = send_seq
         self.rcv_seq = rcv_seq
-        self.max_seq = send_seq - 1
+        self.max_seq = send_seq
 
     def setDataBuf(self, dataq):
         self.dataq = dataq # collections.deque
