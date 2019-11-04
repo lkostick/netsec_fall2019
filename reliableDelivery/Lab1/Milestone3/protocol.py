@@ -93,7 +93,7 @@ class PoopTransport(StackingTransport):
         self.shutdown_counter += 1
         if self.shutdown_counter <= 3:
             self.start_shutdown_timer(kwargs["func"], kwargs["packet_bytes"])
-            self.lowerTransport().transport.write(kwargs["packet_bytes"])
+            self.lowerTransport().write(kwargs["packet_bytes"])
         else:
             self.protocol.doShutdown()
 
