@@ -171,8 +171,6 @@ class PoopTransport(StackingTransport):
 
     def write_send_buf(self):
         logger.debug('{} side transport in write_buf()'.format(self._mode))
-        logger.debug(len(self.send_buf))
-        logger.debug(self.data_transfer_timer)
 
         if len(self.send_buf) > 0 and self.data_transfer_timer is None: # if there's anything to send at all
             logger.debug('{} side send buf size: {}'.format(self._mode, len(self.send_buf)))
