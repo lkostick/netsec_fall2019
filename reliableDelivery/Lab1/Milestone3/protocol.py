@@ -334,9 +334,9 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                             # cancel timeout if exists
                             if self.pt.data_transfer_timer is not None:
                                 self.pt.stop_data_transfer_timer()
-                            logger.debug('{} checking if it should do shutdown. checking closing={} and {}>={} and the shutdown_timre_is_None={}'
-                                         .format(self._mode, self.pt.closing, pkt.ACK, self.pt.max_seq, self.pt.shutdown_timer is None))
-                            if self.pt.closing and pkt.ACK >= self.pt.max_seq: # other side received all data and we received all the acks
+                            logger.debug('{} checking if it should do shutdown. checking closing={} and ({}>={} and {}>={}) and the shutdown_timre_is_None={}'
+                                         .format(self._mode, self.pt.closing, pkt.ACK, self.pt.max_seq-1, self.pt.send_seq, self.pt.max_seq, self.pt.shutdown_timer is None))
+                            if self.pt.closing and (pkt.ACK >= self.pt.max_seq - 1 and self.pt.send_seq >= self.pt.max_seq): # other side received all data and we received all the acks
                                 if self.pt.shutdown_timer is not None:
                                     # A shutdown was already initiated and so this is a shutdown ack
                                     self.pt.stop_shutdown_timer()
@@ -675,9 +675,9 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                             # cancel timeout if exists
                             if self.pt.data_transfer_timer is not None:
                                 self.pt.stop_data_transfer_timer()
-                            logger.debug('{} checking if it should do shutdown. checking closing={} and {}>={} and the shutdown_timre_is_None={}'
-                                         .format(self._mode, self.pt.closing, pkt.ACK, self.pt.max_seq, self.pt.shutdown_timer is None))
-                            if self.pt.closing and pkt.ACK >= self.pt.max_seq: # other side received all data
+                            logger.debug('{} checking if it should do shutdown. checking closing={} and ({}>={} and {}>={}) and the shutdown_timre_is_None={}'
+                                         .format(self._mode, self.pt.closing, pkt.ACK, self.pt.max_seq-1, self.pt.send_seq, self.pt.max_seq, self.pt.shutdown_timer is None))
+                            if self.pt.closing and (pkt.ACK >= self.pt.max_seq - 1 and self.pt.send_seq >= self.pt.max_seq): # other side received all data and we received all the acks
                                 logger.debug('{} side has passed the shutdown conditional. Why did that happen?'.format(self._mode))
                                 if self.pt.shutdown_timer is not None:
                                     # A shutdown was already initiated and so this is a shutdown ack
