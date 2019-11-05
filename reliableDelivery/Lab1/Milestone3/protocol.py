@@ -339,8 +339,12 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                             if self.pt.closing and (pkt.ACK >= self.pt.max_seq - 1 and self.pt.send_seq >= self.pt.max_seq): # other side received all data and we received all the acks
                                 if self.pt.shutdown_timer is not None:
                                     # A shutdown was already initiated and so this is a shutdown ack
-                                    self.pt.stop_shutdown_timer()
-                                    self.doShutdown()
+                                    if pkt.ACK == self.pt.send_seq:
+                                        self.pt.stop_shutdown_timer()
+                                        self.doShutdown()
+                                    else:
+                                        logger.debug(
+                                            '{} side wrong FACK number! wait for timeout and resending FIN'.format(self._mode, self.pt.max_seq))
                                 else:
                                     # We wanted to initiate shutdown but there were some packets left in the buffer so we can initiate now
                                     p = ShutdownPacket()
@@ -680,8 +684,12 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                             if self.pt.closing and (pkt.ACK >= self.pt.max_seq - 1 and self.pt.send_seq >= self.pt.max_seq): # other side received all data and we received all the acks
                                 if self.pt.shutdown_timer is not None:
                                     # A shutdown was already initiated and so this is a shutdown ack
-                                    self.pt.stop_shutdown_timer()
-                                    self.doShutdown()
+                                    if pkt.ACK == self.pt.send_seq:
+                                        self.pt.stop_shutdown_timer()
+                                        self.doShutdown()
+                                    else:
+                                        logger.debug(
+                                            '{} side wrong FACK number! wait for timeout and resending FIN'.format(self._mode, self.pt.max_seq))
                                 else:
                                     # We wanted to initiate shutdown but there were some packets left in the buffer so we can initiate now
                                     p = ShutdownPacket()
