@@ -727,6 +727,7 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                                          "ack: {}\n"
                                          "data: {}\n"
                                          "hash: {}\n".format(self._mode, ack_p.seq, ack_p.ACK, ack_p.data, ack_p.hash))
+                            self.transport.write(ack_p.__serialize__())
                             logger.debug('{} side shutting down.'.format(self._mode))
                             self.doShutdown()
                             return # We are done
