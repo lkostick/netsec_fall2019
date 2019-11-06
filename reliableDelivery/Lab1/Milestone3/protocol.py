@@ -299,9 +299,9 @@ class PoopHandshakeClientProtocol(StackingProtocol):
                             else:
                                 error = 'data corruption error: pkt.datahash != getHash(pkt.data)'
                                 logger.debug(
-                                    '{} side ERROR = {}. Resending last sent ack = {}'.format(self._mode, error, self.pt.rcv_seq))
+                                    '{} side ERROR = {}. Resending last sent ack = {}'.format(self._mode, error, decrement_mod(self.pt.rcv_seq)))
                                 # Resend last successful ack
-                                ack_p = DataPacket(ACK=self.pt.rcv_seq)
+                                ack_p = DataPacket(ACK=decrement_mod(self.pt.rcv_seq))
                                 ack_p.hash = DataPacket.DEFAULT_DATAHASH
                                 ack_p.hash = getHash(ack_p.__serialize__())
                                 logger.debug("{} side sending data packet ack: Info:\n"
@@ -649,7 +649,7 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                             # Resend ACK when sequence number incorrect?
                             '''                            
                             logger.debug('ACK Number that is being resent after mismatched sequence number: {}'.format(self.pt.rcv_seq))
-                            ack_p = DataPacket(ACK=self.pt.rcv_seq)
+                            ack_p = DataPacket(ACK=decrement_mod(self.pt.rcv_seq))
                             ack_p.hash = DataPacket.DEFAULT_DATAHASH
                             ack_p.hash = getHash(ack_p.__serialize__())
                             logger.debug("{} side sending data packet ack: Info:\n"
@@ -658,7 +658,7 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                                         "data: {}\n"
                                         "hash: {}\n".format(self._mode, ack_p.seq, ack_p.ACK, ack_p.data, ack_p.hash))
                             self.transport.write(ack_p.__serialize__())
-                        '''
+                            '''
                         logger.debug('{} side sequence numbers received: {}'.format(self._mode, self.received_sequence_numbers))
                             
                         # received data ack
@@ -683,6 +683,7 @@ class PoopHandshakeServerProtocol(StackingProtocol):
                                 if self.pt.shutdown_timer is not None:
                                     # A shutdown was already initiated and so this is a shutdown ack
                                     if pkt.ACK == self.pt.send_seq:
+                                        logger.debug('{} side: Doing shutdown...'.format(self._mode))
                                         self.pt.stop_shutdown_timer()
                                         self.doShutdown()
                                     else:
