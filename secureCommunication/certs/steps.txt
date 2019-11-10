@@ -1,0 +1,10 @@
+# GENERATE CERT
+openssl req -x509 -sha256 -nodes -days 365 -newkey rsa:2048 -keyout privateKey.pem -out certificate.pem
+openssl x509 -in certificate.pem -pubkey -noout > publicKey.pem
+
+# SIGN DATA
+openssl dgst -sha256 data.txt > hash
+openssl rsautl -sign -inkey privateKey.pem -keyform PEM -in hash >signature
+
+# VERIFY DATA
+openssl rsautl -verify -inkey publicKey.pem -pubin -keyform PEM -in signature
