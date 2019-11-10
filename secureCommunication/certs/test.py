@@ -10,46 +10,71 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 
-
-os.system('openssl req -x509 -sha256 -nodes -days 365 -newkey rsa:2048 -keyout privateKey.pem -out certificate.pem')
-os.system('openssl x509 -in certificate.pem -noout -pubkey > publicKey.pem')
-
+# This variable needs to be sent to the Server so they know how to generate their keys
 parameters = dh.generate_parameters(generator=2, key_size=512, backend=default_backend())
 
-dhPrivateKey = parameters.generate_private_key()
-dhPublicKey = dhPrivateKey.public_key()
 
-#b_private_key = parameters.generate_private_key()
-#b_peer_public_key = b_private_key.public_key()
+### CLIENT SIDE ###
+os.system('openssl req -x509 -sha256 -nodes -days 365 -newkey rsa:2048 -keyout clientPrivateKey.pem -out clientCertificate.pem')
 
-#a_shared_key = a_private_key.exchange(b_peer_public_key)
-#b_shared_key = b_private_key.exchange(a_peer_public_key)
-
-#print 'a_secret: '+dhPublicKey
-#print 'b_secret: '+b_shared_key
+dhPrivateKeyClient = parameters.generate_private_key()
+dhPublicKeyClient = dhPrivateKeyClient.public_key()
 
 # Load certificate
-cert_file = open('certificate.pem', 'r')
+cert_file = open('clientCertificate.pem', 'r')
 cert = cert_file.read()
 cert_file.close()
 cert = x509.load_pem_x509_certificate(cert, default_backend())
-print(cert.public_key())
 
 # Load private signing key
-key_file = open('privateKey.pem', 'r')
+key_file = open('clientPrivateKey.pem', 'r')
 key_from_file = key_file.read()
 key_file.close()
 signingKey = crypto.load_privatekey(crypto.FILETYPE_PEM, key_from_file)
-print(signingKey)
 
-# Load public verification key
-key_file = open('publicKey.pem', 'r')
-key_from_file = key_file.read()
-key_file.close()
-verificationKey = crypto.load_publickey(crypto.FILETYPE_PEM, key_from_file)
-signature = crypto.sign(signingKey, str(dhPublicKey), 'sha256')
+# Sign the DH parameter
+signature = crypto.sign(signingKey, str(dhPublicKeyClient), 'sha256')
+
+# Verify that the signature is valid (This is on the Server side)
 try:
-    crypto.verify(verificationKey, signature, str(dhPublicKey), 'sha256')
+    crypto.verify(cert, signature, str(dhPublicKeyClient), 'sha256')
     print("VERIFIED")
 except crypto.Error:
     print("BOOOO")
+
+### SERVER SIDE ###
+os.system('openssl req -x509 -sha256 -nodes -days 365 -newkey rsa:2048 -keyout serverPrivateKey.pem -out serverCertificate.pem')
+
+dhPrivateKeyServer = parameters.generate_private_key()
+dhPublicKeyServer = dhPrivateKeyServer.public_key()
+
+# Load certificate
+cert_file = open('serverCertificate.pem', 'r')
+cert = cert_file.read()
+cert_file.close()
+cert = x509.load_pem_x509_certificate(cert, default_backend())
+
+# Load private signing key
+key_file = open('serverPrivateKey.pem', 'r')
+key_from_file = key_file.read()
+key_file.close()
+signingKey = crypto.load_privatekey(crypto.FILETYPE_PEM, key_from_file)
+
+# Sign the DH parameter
+signature = crypto.sign(signingKey, str(dhPublicKeyServer), 'sha256')
+
+# Verify that the signature is valid (This is on the Client side)
+try:
+    crypto.verify(cert, signature, str(dhPublicKeyServer), 'sha256')
+    print("VERIFIED")
+except crypto.Error:
+    print("BOOOO")
+
+### BOTH SIDES ###
+
+clientSharedSecret = dhPrivateKeyClient.exchange(dhPublicKeyServer)
+serverSharedSecret = dhPrivateKeyServer.exchange(dhPublicKeyClient)
+
+print("Shared Secrets are equal: " + str(clientSharedSecret == serverSharedSecret))
+print("Client Shared Secret: " + clientSharedSecret)
+print("Server Shared Secret: " + serverSharedSecret)
