@@ -1,0 +1,22 @@
+- Will have a chain of certificates
+- Each group will become an intermediate CA for 20194.team_number (in our case, 20194.1)
+- Dr. Nielson will be root CA for 20194
+- Do some hierarchical stuff to ensure that a certificate is real
+- Prefix matching
+- Someone with 20194.1 can sign anything with 20194.1.x.y
+- Will send a chain of certificates
+- Change to list of certificates (LIST(BUFFER) in the packet definition)
+
+
+Connection between 20194.3.100.200 and 20194.5.3.2
+- The subject of the lowest certificate will just be the playground address
+- All users have the root certificate, but the lowest cert will not be signed by the root
+- Instead, we also send another cert alongside the lowest cert that has been signed by the root
+- Just send certs for the address we are claiming as well as the intermediate cert that has been signed by the root
+- PETF can decide whether or not to include the root in the LIST
+	- Maybe if we have multiple root CAs
+- Receiver should step through a verification process
+
+
+Issues
+- Check if the playground address we think we are talking to is the subject of the certificate
