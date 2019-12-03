@@ -123,11 +123,11 @@ def main(args):
     print('port:', port)
     bank_addr = '20194.0.1.1'
     bank_port = 888
-    # username = input('Enter username: ')
-    username = "sabdous1"
+    username = input('Enter username: ')
+    # username = "sabdous1"
     password = getpass.getpass('Enter password for {}: '.format(username))
-    # user_acct = input('Enter account name: ')
-    user_acct = "sabdous1_account"
+    user_acct = input('Enter account name: ')
+    # user_acct = "sabdous1_account"
     bank_client = BankClientProtocol(bank_cert, username, password)
     loop = asyncio.get_event_loop()
 
