@@ -285,7 +285,7 @@ class CrapProtocol(StackingProtocol):
         return True
 
     def data_received(self, data):
-        logger.debug("CRAP: {} side received a data of size {}".format(self.mode, len(data)))
+        logger.debug("CRAP: {} side received a data of size {} from {}".format(self.mode, len(data), self.transport.get_extra_info("peername")))
         self.deserializer.update(data)
         if self.handshakeComplete:
             for packet in self.deserializer.nextPackets():
