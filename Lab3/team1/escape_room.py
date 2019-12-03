@@ -535,7 +535,7 @@ class ServerProtocol(asyncio.Protocol):
         return True
 
     def data_received(self, data):
-        print('Something received from {}: {}'.format(self.transport.get_extra_info('peer_name'), data))
+        print('Something received from {}: {}'.format(self.transport.get_extra_info('peername'), data))
         self.deserializer.update(data)
         for packet in self.deserializer.nextPackets():
             print('Packet Received: ' + str(packet))
