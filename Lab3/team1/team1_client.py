@@ -35,7 +35,7 @@ class GameClientProtocol(asyncio.Protocol):
         self.transport.write(p.__serialize__())
 
     def data_received(self, data):
-        print('Server side something received from {}: {}'.format(self.transport.get_extra_info('peer_name'), data))
+        print('Something received from {}: {}'.format(self.transport.get_extra_info('peer_name'), data))
         self.deserializer.update(data)
         for packet in self.deserializer.nextPackets():
             print('Packet Received: ' + str(packet))
@@ -74,17 +74,23 @@ class GameClientProtocol(asyncio.Protocol):
             print('Login error. {}'.format(e))
             return False
 
+        print('Logged in')
+
         try:
             await self.bank_client.switchAccount(src)
         except Exception as e:
             print('Could not set source account as {} because {}'.format(src, e))
             return False
 
+        print('Source account set!')
+
         try:
             result = await self.bank_client.transfer(dst, amt, memo)
         except Exception as e:
             print('Could not transfer because {}'.format(e))
             return False
+
+        print('Transferred!')
 
         self.transferResult = result
 

@@ -587,7 +587,7 @@ async def main(game=None, args=None):
 
 if __name__ == "__main__":
     if IS_ONLINE:
-        IP = '20194.1.1.100'
+        IP = '20194.1.1.200'
         PORT = "12345"
         args = []
         loop = asyncio.get_event_loop()
