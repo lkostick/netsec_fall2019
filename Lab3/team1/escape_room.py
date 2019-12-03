@@ -15,7 +15,7 @@ if IS_ONLINE:
     from playground.network.common import PlaygroundAddress
     from playground.network.packet import PacketType
     from autograder_ex6_packets import *
-    from .game_packets import *
+    from game_packets import *
     from CipherUtil import loadCertFromFile
     from BankCore import LedgerLineStorage, LedgerLine
     from OnlineBank import BankClientProtocol, OnlineBankConfig

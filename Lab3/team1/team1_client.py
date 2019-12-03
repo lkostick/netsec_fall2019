@@ -3,7 +3,7 @@ from OnlineBank import BankClientProtocol, OnlineBankConfig
 
 import sys, os, getpass, asyncio
 import playground
-from .game_packets import *
+from game_packets import *
 from playground.network.packet import PacketType
 from playground.common.logging import EnablePresetLogging, PRESET_VERBOSE
 
