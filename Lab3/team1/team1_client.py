@@ -39,10 +39,6 @@ class GameClientProtocol(asyncio.Protocol):
         self.deserializer.update(data)
         for packet in self.deserializer.nextPackets():
             print('Packet Received: ' + str(packet))
-
-            ("unique_id", STRING),
-            ("account", STRING),
-            ("amount", UINT8)
             if isinstance(packet, GameRequirePayPacket):
                 unique_id, account, amount = process_game_require_pay_packet(packet)
                 print('Packet Info: GameRequirePayPacket\n'
@@ -119,9 +115,11 @@ def main(args):
     print('port:', port)
     bank_addr = '20194.0.1.1'
     bank_port = 888
-    username = input('Enter username: ')
+    # username = input('Enter username: ')
+    username = "sabdous1"
     password = getpass.getpass('Enter password for {}: '.format(username))
-    user_acct = input('Enter account name: ')
+    # user_acct = input('Enter account name: ')
+    user_acct = "sabdous1_account"
     bank_client = BankClientProtocol(bank_cert, username, password)
     loop = asyncio.get_event_loop()
 
