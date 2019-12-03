@@ -37,6 +37,7 @@ if IS_ONLINE:
 
     EnablePresetLogging(PRESET_VERBOSE)
 
+STACK = "crap"
 
 
 def create_container_contents(*escape_room_objects):
@@ -589,7 +590,6 @@ if __name__ == "__main__":
     if IS_ONLINE:
         IP = '20194.1.1.200'
         PORT = "12345"
-        stack = "crap"
         args = []
         loop = asyncio.get_event_loop()
         args.append(loop)
@@ -597,7 +597,7 @@ if __name__ == "__main__":
         password = getpass.getpass("Enter password for {}: ".format(username))
         args.append(password)
         args.append(sys.argv[1:])
-        coro = playground.create_server(lambda: ServerProtocol(args), host=IP, port=PORT, family=stack)
+        coro = playground.create_server(lambda: ServerProtocol(args), host=IP, port=PORT, family=STACK)
         server = loop.run_until_complete(coro)
         print('Serving on {}'.format(server.sockets[0].getsockname()))
         try:

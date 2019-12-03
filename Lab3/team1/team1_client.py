@@ -10,6 +10,7 @@ from playground.common.logging import EnablePresetLogging, PRESET_VERBOSE
 bankconfig = OnlineBankConfig()
 certPath = os.path.join(bankconfig.path(), "bank.cert")
 bank_cert = loadCertFromFile(certPath)
+STACK = "crap"
 
 
 class GameClientProtocol(asyncio.Protocol):
@@ -64,7 +65,7 @@ class GameClientProtocol(asyncio.Protocol):
             lambda: self.bank_client,
             self.bank_addr,
             self.bank_port,
-            family='default'
+            family=STACK
         )
         print('Connected. Logging in.')
 
@@ -115,7 +116,7 @@ class GameClientProtocol(asyncio.Protocol):
 
 def main(args):
     EnablePresetLogging(PRESET_VERBOSE)
-    stack = "crap"
+
     host = args[0]
     port = int(args[1])
     print('host:', host)
@@ -131,7 +132,7 @@ def main(args):
     loop = asyncio.get_event_loop()
 
     coro = playground.create_connection(
-        lambda: GameClientProtocol(loop, bank_client, bank_addr, bank_port, username, user_acct), host=host, port=port, family=stack)
+        lambda: GameClientProtocol(loop, bank_client, bank_addr, bank_port, username, user_acct), host=host, port=port, family=STACK)
     client = loop.run_until_complete(coro)
 
     try:
