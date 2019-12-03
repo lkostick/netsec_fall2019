@@ -18,7 +18,7 @@ logger = logging.getLogger("playground.__connector__." + __name__)
 
 SIGNING_KEY_SIZE = 2048
 NONCE_SIZE = 30
-PLAYGROUND_ADDRESS = "20194.1.1.100"
+PLAYGROUND_ADDRESS = "20194.1.1.200"
 
 def generate_nonce():
     return random.randint(0, 2**NONCE_SIZE)
