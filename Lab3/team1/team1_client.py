@@ -24,7 +24,7 @@ class GameClientProtocol(asyncio.Protocol):
         self.game_status = None
 
         self.loop.add_reader(sys.stdin, self.game_next_input)
-        self.d = PacketType.Deserializer()
+        self.deserializer = PacketType.Deserializer()
 
     def connection_made(self, transport):
         print('Connection made')
@@ -35,14 +35,27 @@ class GameClientProtocol(asyncio.Protocol):
         self.transport.write(p.__serialize__())
 
     def data_received(self, data):
-        self.d.update(data)
-        for p in self.d.nextPackets():
-            if isinstance(p, GameRequirePayPacket):
-                unique_id, account, amount = process_game_require_pay_packet(p)
+        print('Server side something received from {}: {}'.format(self.transport.get_extra_info('peer_name'), data))
+        self.deserializer.update(data)
+        for packet in self.deserializer.nextPackets():
+            print('Packet Received: ' + str(packet))
+
+            ("unique_id", STRING),
+            ("account", STRING),
+            ("amount", UINT8)
+            if isinstance(packet, GameRequirePayPacket):
+                unique_id, account, amount = process_game_require_pay_packet(packet)
+                print('Packet Info: GameRequirePayPacket\n'
+                      'unique_id: {}\n'
+                      'account: {}\n'
+                      'amount: {}\n'.format(unique_id, account, amount))
                 asyncio.ensure_future(self.bankTransfer(self.user_acct, account, amount, unique_id))
 
-            elif isinstance(p, GameResponsePacket):
-                game_response, self.game_status = process_game_response(p)
+            elif isinstance(packet, GameResponsePacket):
+                game_response, self.game_status = process_game_response(packet)
+                print('Packet Info: GameRequirePayPacket\n'
+                      'reponse: {}\n'
+                      'status: {}\n'.format(game_response, self.game_status))
                 game_over = self.game_status == 'escaped' or self.game_status == 'dead'
                 print(game_response)
 
