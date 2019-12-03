@@ -1,0 +1,59 @@
+1) Below is a list of each person's contribution to our escape room.
+
+Jacob Flynn: Implemented a new object called 'doll' that is visible when the escape room is started. If the doll is picked up, the player immediately dies.
+
+Sepehr Abdous: Added a 'safe' object that either has a money or a bomb in it. If a user opens the safe, they will randomly either explode (bomb) or survive (money)
+
+Logan Kostick: Changed the hammer to make it bad. No longer will a player be perfectly accurate with their hammer, and now they might miss when they use the hammer.
+
+Justin Lee: Added a safe that is locked by a number pad. The the item inside of the safe is a very gorgeous haiku.
+
+Weichen Wang: Changed the unlock to not be perfect. Sometimes you can fail thanks to a rusty tool.
+
+
+2) Below is a list of password hashes for one person from each team.
+
+
+---------------
+User: jlee697
+Hash: 605d5333d05267c065dd133e92e09d0e7e9c027467ef70854304f8598235552b
+Team: 1 (lol that's us)
+---------------
+User: wli71
+Hash: 26de54f5bad3ac048300aaab36e9df01714e550adffd2399cbe4dc67322bf53a
+Team: 2
+---------------
+User: xli152
+Hash: 74ed4008f0c46cf9f1313c06bab4e217f35a8c21e2a9e96c9ee96618da0a674f
+Team: 3
+---------------
+User: tfeng7
+Hash: c3bdfcb6d7f5942ee6d00aa7c0cdebc6549dff28849a07cdeb6cda4ef6f2b691
+Team: 4
+---------------
+User:
+Hash:
+Team: 5
+---------------
+User: qzhang68
+Hash: 9a26bd6b41440e659e90941cbbd3b43434dd2aff346eb3bcbdd6172142ba4610
+Team: 6
+---------------
+User: jlee662
+Hash: 471d56b75c4790f3c6a6609d59bfd94f6c0c8f714c2c51b708523f4a397f1161
+Team: 9
+
+
+4) Below are our ratings for each team's escape room.
+
+Team 2: Fun, but I couldn’t figure out how to the chest! The extra life didn’t seem to work. The trap was fun though. 7/10
+
+Team 3: I liked the combination aspect, and the surprise monster as well. Also, the flyingkey commands continued going off even after I got it. 7/10
+
+Team 4: Cool graphics, but it took a really long time to actually get into the game. Chest said it contained none when it actually contained the hammer. The multiple rooms was a really cool addition. 9/10
+
+Team 5: I liked the addition of the guard dog, and the dark room was an interesting addition. Conch shell was clever as well! 8/10
+
+Team 6: I like the feeling of urgency, but the Devil’s Snare never got to me. I also already have the harp and hammer in my inventory without ever unlocking the chest. 5/10
+
+Team 9: I liked the addition of the axekiller and shield, but other than that and the potato I can’t think of any new additions. Works well though! 7/10
