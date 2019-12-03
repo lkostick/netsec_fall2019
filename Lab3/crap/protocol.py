@@ -115,6 +115,8 @@ class CrapTransport(StackingTransport):
         logger.debug('CRAP: {} side transport.write() data of len {}'.format(self.mode, len(data)))
 
         aes_gcm = AESGCM(self.enc_key)
+
+        logger.debug('CRAP: {} side Encrypting the data received from higher layer: {}\n'.format(self.mode, data))
         encrypted_data = aes_gcm.encrypt(self.self_IV, data, None)
 
         logger.debug('CRAP: {} side incrementing self_IV by one from {} to {}'.format(self.mode, self.self_IV, increment_large_binary(self.self_IV)))
@@ -291,9 +293,10 @@ class CrapProtocol(StackingProtocol):
                     logger.debug('CRAP: {} side received data packet. Info:\n'
                                  'data: {}\n'.format(self.mode, packet.data))
 
-                    logger.debug('CRAP: {} side decrypting data\n'.format(self.mode))
+                    logger.debug('CRAP: {} side decrypting data.\n'.format(self.mode))
                     aes_gcm = AESGCM(self.higher_transport.dec_key)
                     decrypted_data = aes_gcm.decrypt(self.higher_transport.other_side_IV, packet.data, None)
+                    logger.debug('CRAP: {} side decrypted data is: {}\n'.format(self.mode, decrypted_data))
 
                     logger.debug(
                         'CRAP: {} side incrementing other_side_IV by one from {} to {}'.format(self.mode, self.higher_transport.other_side_IV,
