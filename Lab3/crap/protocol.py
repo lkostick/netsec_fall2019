@@ -453,14 +453,8 @@ class CrapProtocol(StackingProtocol):
                                 logger.debug(
                                     'CRAP: {} set handshakeComplete to True'.format(self.mode))
 
-                                higher_transport = CrapTransport(self.transport, mode=self.mode, protocol=self)
-                                higher_transport.assign_gcm_values()
-                                self.higher_transport = higher_transport
-                                logger.debug(
-                                    'Crap: {} side calling self.higherProtocol().connection_made()'.format(self.mode))
-                                self.higherProtocol().connection_made(higher_transport)
-
-                                packet = HandshakePacket(status=HandshakePacket.SUCCESS, nonceSignature=nonce_signature, cert=self.cert_bytes)
+                                packet = HandshakePacket(status=HandshakePacket.SUCCESS, nonceSignature=nonce_signature,
+                                                         cert=self.cert_bytes)
                                 packet_bytes = packet.__serialize__()
                                 logger.debug('CRAP: {} side sending handshake packet. Info:\n'
                                              'status: {}\n'
@@ -469,9 +463,20 @@ class CrapProtocol(StackingProtocol):
                                              'cert: {}\n'
                                              'nonce: {}\n'
                                              'nonce_signature: {}\n'
-                                             'cert chain: {}'.format(self.mode, packet.status, packet.pk, packet.signature, packet.cert, packet.nonce, packet.nonceSignature, packet.certChain))
+                                             'cert chain: {}'.format(self.mode, packet.status, packet.pk,
+                                                                     packet.signature, packet.cert, packet.nonce,
+                                                                     packet.nonceSignature, packet.certChain))
 
                                 self.transport.write(packet_bytes)
+
+                                higher_transport = CrapTransport(self.transport, mode=self.mode, protocol=self)
+                                higher_transport.assign_gcm_values()
+                                self.higher_transport = higher_transport
+                                logger.debug(
+                                    'Crap: {} side calling self.higherProtocol().connection_made()'.format(self.mode))
+                                self.higherProtocol().connection_made(higher_transport)
+
+
 
                             except:
                                 error = 'Verification failed!'
