@@ -15,7 +15,7 @@ if IS_ONLINE:
     from playground.network.common import PlaygroundAddress
     from playground.network.packet import PacketType
     from autograder_ex6_packets import *
-    from game_packets import *
+    from .game_packets import *
     from CipherUtil import loadCertFromFile
     from BankCore import LedgerLineStorage, LedgerLine
     from OnlineBank import BankClientProtocol, OnlineBankConfig
@@ -587,7 +587,7 @@ async def main(game=None, args=None):
 
 if __name__ == "__main__":
     if IS_ONLINE:
-        IP = '1376.1.1.1'
+        IP = '20194.1.1.100'
         PORT = "12345"
         args = []
         loop = asyncio.get_event_loop()
