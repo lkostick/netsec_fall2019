@@ -236,7 +236,7 @@ class CrapProtocol(StackingProtocol):
         return False
 
     def connection_made(self, transport):
-        logger.debug('CRAP: {} side connection made\n'.format(self.mode))
+        logger.debug('CRAP: {} side connection made to {}\n'.format(self.mode, transport.get_extra_info("peername")))
         self.transport = transport
         if self.mode == 'client':
             signature = self.signing_key.sign(self.public_key_bytes, padding.PSS(mgf=padding.MGF1(hashes.SHA256()),
