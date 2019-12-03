@@ -115,6 +115,7 @@ class GameClientProtocol(asyncio.Protocol):
 
 def main(args):
     EnablePresetLogging(PRESET_VERBOSE)
+    stack = "crap"
     host = args[0]
     port = int(args[1])
     print('host:', host)
@@ -130,7 +131,7 @@ def main(args):
     loop = asyncio.get_event_loop()
 
     coro = playground.create_connection(
-        lambda: GameClientProtocol(loop, bank_client, bank_addr, bank_port, username, user_acct), host, port)
+        lambda: GameClientProtocol(loop, bank_client, bank_addr, bank_port, username, user_acct), host=host, port=port, family=stack)
     client = loop.run_until_complete(coro)
 
     try:
