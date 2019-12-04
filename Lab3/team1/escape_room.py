@@ -58,7 +58,7 @@ def add_connection(transport, time):
     write_header = True
     if os.path.isfile('connections.csv'):
         write_header = False
-    with open('connections.csv', 'wa') as csvfile:
+    with open('connections.csv', 'a') as csvfile:
         fieldnames = ['team_number', 'time']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         if write_header:
@@ -76,7 +76,7 @@ def add_payment(transport, time):
     print('A new payment is being added for team {} at {}'.format(team_number, time))
     if os.path.isfile('payments.csv'):
         write_header = False
-    with open('payments.csv', 'wa') as csvfile:
+    with open('payments.csv', 'a') as csvfile:
         fieldnames = ['team_number', 'time']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         if write_header:
