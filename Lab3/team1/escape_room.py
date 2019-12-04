@@ -1,6 +1,7 @@
 """
 Escape Room Core
 """
+import datetime
 
 IS_ONLINE = True
 import random
@@ -8,6 +9,7 @@ import time
 import uuid
 import getpass, sys, os, asyncio
 import random
+import csv
 
 if IS_ONLINE:
     from playground.common.logging import EnablePresetLogging, PRESET_VERBOSE, PRESET_DEBUG
@@ -46,6 +48,36 @@ def create_container_contents(*escape_room_objects):
 def listFormat(object_list):
     l = ["a "+object.name for object in object_list if object["visible"]]
     return ", ".join(l)
+
+
+def add_connection(transport, time):
+    ip = transport.get_extra_info('peername')[0]
+    splitted_ip = ip.split('.')
+    team_number = splitted_ip[1]
+    print('A new connection is being added added for team {} at {}'.format(team_number, time))
+    write_header = True
+    if os.path.isfile('connections.csv'):
+        write_header = False
+    with open('connections.csv', 'wa') as csvfile:
+        fieldnames = ['team_number', 'time']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        if write_header:
+            writer.writeheader()
+        writer.writerow({'team_number': team_number, 'time': time})
+    return team_number
+
+
+def add_payment(team_number, time):
+    write_header = True
+    print('A new payment is being added for team {} at {}'.format(team_number, time))
+    if os.path.isfile('payments.csv'):
+        write_header = False
+    with open('payments.csv', 'wa') as csvfile:
+        fieldnames = ['team_number', 'time']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        if write_header:
+            writer.writeheader()
+        writer.writerow({'team_number': team_number, 'time': time})
 
 class EscapeRoomObject:
     def __init__(self, name, **attributes):
@@ -513,9 +545,13 @@ class ServerProtocol(asyncio.Protocol):
         self.deserializer = PacketType.Deserializer()
         self.amount = 10
         self.memo = None
+        self.time = None
+        self.team_number = None
 
     def connection_made(self, transport):
         self.transport = transport
+        self.time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+        self.team_number = add_connection(transport, self.time)
         self.game = EscapeRoomGame(transport=transport, output=flush_output)
         self.game.create_game(cheat=("--cheat" in self.args))
 
@@ -556,6 +592,7 @@ class ServerProtocol(asyncio.Protocol):
                 password = self.password
                 bank_client = BankClientProtocol(bank_cert, username, password)
                 if self.verify(bank_client=bank_client, receipt_bytes=receipt, signature_bytes=receipt_signature, dst=dst_account, amount=self.amount, memo=self.memo):
+                    add_payment(self.team_number, self.time)
                     self.game.start()
                     asyncio.ensure_future(main(self.game, self.args))
                 else:
