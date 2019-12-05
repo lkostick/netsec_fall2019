@@ -83,6 +83,21 @@ def add_payment(transport, time):
             writer.writeheader()
         writer.writerow({'team_number': team_number, 'time': time})
 
+def add_exits(transport, time):
+    ip = transport.get_extra_info('peername')[0]
+    splitted_ip = ip.split('.')
+    team_number = splitted_ip[1]
+    write_header = True
+    print('A new exit is being added for team {} at {}'.format(team_number, time))
+    if os.path.isfile('exits.csv'):
+        write_header = False
+    with open('exits.csv', 'a') as csvfile:
+        fieldnames = ['team_number', 'time']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        if write_header:
+            writer.writeheader()
+        writer.writerow({'team_number': team_number, 'time': time})
+
 class EscapeRoomObject:
     def __init__(self, name, **attributes):
         self.name = name
@@ -512,6 +527,8 @@ class EscapeRoomGame:
                 self.output("You died. Game over!", self.status, transport=self.transport)
                 self.status = "dead"
             elif self.player.name not in self.room["container"]:
+                time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+                add_exits(transport=self.transport, time=time)
                 self.status = "escaped"
                 self.output("VICTORY! You escaped!", self.status, transport=self.transport)
                 
@@ -549,12 +566,11 @@ class ServerProtocol(asyncio.Protocol):
         self.deserializer = PacketType.Deserializer()
         self.amount = 10
         self.memo = None
-        self.time = None
 
     def connection_made(self, transport):
         self.transport = transport
-        self.time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
-        add_connection(transport, self.time)
+        time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+        add_connection(transport, time)
         self.game = EscapeRoomGame(transport=transport, output=flush_output)
         self.game.create_game(cheat=("--cheat" in self.args))
 
@@ -595,7 +611,8 @@ class ServerProtocol(asyncio.Protocol):
                 password = self.password
                 bank_client = BankClientProtocol(bank_cert, username, password)
                 if self.verify(bank_client=bank_client, receipt_bytes=receipt, signature_bytes=receipt_signature, dst=dst_account, amount=self.amount, memo=self.memo):
-                    add_payment(self.transport, self.time)
+                    time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+                    add_payment(self.transport, time)
                     self.game.start()
                     asyncio.ensure_future(main(self.game, self.args))
                 else:
