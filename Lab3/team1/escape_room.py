@@ -64,8 +64,7 @@ def add_connection(transport, time):
         if write_header:
             writer.writeheader()
         writer.writerow({'team_number': team_number, 'time': time})
-    print('A new connection is being added for team {}'.format(team_number))
-    return team_number
+    print('A new connection added for team {}'.format(team_number))
 
 
 def add_payment(transport, time):
@@ -82,6 +81,8 @@ def add_payment(transport, time):
         if write_header:
             writer.writeheader()
         writer.writerow({'team_number': team_number, 'time': time})
+    print('A new payment added for team {}'.format(team_number))
+
 
 def add_exits(transport, time):
     ip = transport.get_extra_info('peername')[0]
@@ -97,6 +98,7 @@ def add_exits(transport, time):
         if write_header:
             writer.writeheader()
         writer.writerow({'team_number': team_number, 'time': time})
+    print('A new exit added for team {}'.format(team_number))
 
 class EscapeRoomObject:
     def __init__(self, name, **attributes):
