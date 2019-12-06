@@ -46,9 +46,12 @@ class GameClientProtocol(asyncio.Protocol):
 
     def send_next_command(self):
         time.sleep(1)
+        print('########################################')
         if "hit flyingkey" in self.commands[0] and not self.flyingkeyHit:
+            print('sending {}'.format(self.commands[0]))
             self.write(self.commands[0])
         elif "hit flyingring" in self.commands[0] and not self.flyingringHit:
+            print('sending {}'.format(self.commands[0]))
             self.write(self.commands[0])
         else:
             if "hit flyingkey" in self.commands[0] and self.flyingkeyHit:
@@ -56,7 +59,10 @@ class GameClientProtocol(asyncio.Protocol):
             if "hit flyingring" in self.commands[0] and self.flyingringHit:
                 self.commands.pop(0)
             command = self.commands.pop(0)
+            print('sending {}'.format(self.command))
             self.write(command)
+
+        print('########################################')
 
     def data_received(self, data):
         print('Something received from {}: {}'.format(self.transport.get_extra_info('peername'), data))
