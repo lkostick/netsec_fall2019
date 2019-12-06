@@ -140,10 +140,10 @@ class GameClientProtocol(asyncio.Protocol):
         if self.game_status != 'playing':
             self.loop.stop()
         else:
-            self.flush_output('>> ', end='')
-        if self.commands is None:
-            game_input = sys.stdin.readline().strip()
-            self.write(game_input)
+            if self.commands is None:
+                self.flush_output('>> ', end='')
+                game_input = sys.stdin.readline().strip()
+                self.write(game_input)
 
     def flush_output(self, *args, **kargs):
         print(*args, **kargs)
