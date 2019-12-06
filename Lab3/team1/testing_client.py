@@ -45,7 +45,7 @@ class GameClientProtocol(asyncio.Protocol):
         self.transport.write(p.__serialize__())
 
     def send_next_command(self):
-        time.sleep(3)
+        time.sleep(5)
         print('########################################')
         if "hit flyingkey" in self.commands[0] and not self.flyingkeyHit:
             print('sending {}'.format(self.commands[0]))
@@ -175,7 +175,7 @@ def main(args):
     '''
     commands = ["enter code to the coded lock", datetime.datetime.now().strftime("%H%M"), "open chest", "get hammer from chest", "hit flyingkey with hammer",
                 "get key", "unlock door with key", "open door"]
-    team_list.append(Team(team_number='2', host='20194.2.57.98', port=2222, commands=commands))
+    team_list.append(Team(team_number='2', host='20194.2.57.98', port=2222, commands=None))
 
     '''
     commands to win team to:
@@ -206,7 +206,7 @@ def main(args):
                 "hit flyingring with spear", "get flyingkey", "get flyingring",
                 "get glue", "combine flyingkey with flyingring using glue", "get key",
                 "unlock door with key", "hit monster with hammer", "open door"]
-    team_list.append(Team(team_number='3', host='20194.3.6.9', port=333, commands=commands))
+    team_list.append(Team(team_number='3', host='20194.3.6.9', port=333, commands=None))
 
     '''
     commands to win team to:
@@ -232,7 +232,7 @@ def main(args):
     commands = ["look mirror", "get hairpin", "unlock chest with hairpin", "open chest",
                 "get hammer from chest", "hit flyingkey with hammer", "get key",
                 "unlock door with key", "open door"]
-    team_list.append(Team(team_number='5', host='20194.5.20.30', port=8989, commands=commands))
+    team_list.append(Team(team_number='5', host='20194.5.20.30', port=8989, commands=None))
 
     '''
     commands to win team to:
@@ -243,7 +243,7 @@ def main(args):
 
     '''
     commands = ["hit flyingkey with hammer", "get key", "unlock door with key", "open door"]
-    team_list.append(Team(team_number='6', host='20194.6.20.30', port=16666, commands=commands))
+    team_list.append(Team(team_number='6', host='20194.6.20.30', port=16666, commands=None))
 
     '''
     commands to win team to:
@@ -262,7 +262,7 @@ def main(args):
     commands = ["get shield", "look mirror", "get hairpin",
                 "unlock chest with hairpin", "open chest", "get hammer from chest",
                 "hit flyingkey with hammer", "get key", "unlock door with key", "open door"]
-    team_list.append(Team(team_number='9', host='20194.9.1.1', port=7826, commands=commands))
+    team_list.append(Team(team_number='9', host='20194.9.1.1', port=7826, commands=None))
 
     while True:
         team_number = input("Enter team number escaperoom you want to play: ")
@@ -283,10 +283,10 @@ def main(args):
     bank_addr = '20194.0.1.1'
     bank_port = 888
     username = input('Enter username: ')
-    username = "sabdous1"
+    # username = "sabdous1"
     password = getpass.getpass('Enter password for {}: '.format(username))
     user_acct = input('Enter account name: ')
-    user_acct = "sabdous1_account"
+    # user_acct = "sabdous1_account"
     bank_client = BankClientProtocol(bank_cert, username, password)
     loop = asyncio.get_event_loop()
 
