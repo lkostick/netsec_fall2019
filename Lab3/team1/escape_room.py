@@ -495,7 +495,7 @@ class EscapeRoomGame:
     async def flyingkey_agent(self, flyingkey):
         random.seed(0) # this should make everyone's random behave the same.
         await asyncio.sleep(5) # sleep before starting the while loop
-        while self.status == "playing" and flyingkey["flying"]:
+        while self.status == "playing" and flyingkey["flying"] and self.player["alive"]:
             locations = ["ceiling","floor","wall"]
             locations.remove(flyingkey["location"])
             random.shuffle(locations)
