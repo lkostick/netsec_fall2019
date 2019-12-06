@@ -211,7 +211,14 @@ def main(args):
     '''
     commands to win team to:
     1) "look mirror"
-    2) 
+    2) "get hairpin"
+    3) "unlock chest with hairpin"
+    4) "open chest"
+    5) "get hammer from chest"
+    6) "hit flyingkey with hammer" (do it till you hit it)
+    7) "get key"
+    8) "unlock door with key"
+    9) "open door"
 
     '''
     team_list.append(Team(team_number='4', host='20194.4.4.4', port=8666))
