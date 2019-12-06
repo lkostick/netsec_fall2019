@@ -138,6 +138,7 @@ class CrapProtocol(StackingProtocol):
         self.deserializer = CrapPacketType.Deserializer()
         self.handshakeComplete = False
         self.higher_transport = None
+        self.verification_key = None
 
         # Private Key
         self.private_key = ec.generate_private_key(ec.SECP384R1(), default_backend())
@@ -340,6 +341,7 @@ class CrapProtocol(StackingProtocol):
 
                             logger.debug('CRAP: {} side verifying signature received from other side!\n'.format(self.mode))
                             verification_key = cert.public_key()
+                            self.verification_key = verification_key
                             verification_key.verify(packet.signature, packet.pk, padding.PSS(mgf=padding.MGF1(hashes.SHA256()),
                                                               salt_length=padding.PSS.MAX_LENGTH), hashes.SHA256())
                             logger.debug('CRAP: {} side signature verified!\n'.format(self.mode))
@@ -392,10 +394,14 @@ class CrapProtocol(StackingProtocol):
                             self.connection_lost()
 
                     elif packet.status == HandshakePacket.SUCCESS:
-                        if not_set(packet.pk, packet.nonce, packet.signature) and is_set(packet.nonceSignature, packet.cert):
+                        if not_set(packet.pk, packet.nonce, packet.signature) and is_set(packet.nonceSignature):
                             try:
-                                cert = deserialize_cert(packet.cert)
-                                verification_key = cert.public_key()
+
+                                if is_set(packet.cert):
+                                    cert = deserialize_cert(packet.cert)
+                                    verification_key = cert.public_key()
+                                else:
+                                    verification_key = self.verification_key
                                 logger.debug('CRAP: {} side verifying nonce signature received from other side!\n'.format(self.mode))
                                 verification_key.verify(packet.nonceSignature, self.nonce_bytes,
                                                         padding.PSS(mgf=padding.MGF1(hashes.SHA256()),
