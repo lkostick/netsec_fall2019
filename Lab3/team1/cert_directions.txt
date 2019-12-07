@@ -1,0 +1,10 @@
+bad_common_name_cert: This has a common name set to 127.0.0.1 which should 
+be rejected. This tests the first case we came up with.
+
+bad_format_common_name_cert: This has a common name set to 20194.1.1 which is
+missing the last set of digits, so it should be rejected. This tests the 
+second case we came up with.
+
+letters_in_common_name: This has a common name set to 20194.1.1.20O, where the
+last character is a capital 'O' instead of a zero. This tests the third case
+we came up with.
