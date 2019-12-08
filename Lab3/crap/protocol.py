@@ -189,7 +189,7 @@ class CrapProtocol(StackingProtocol):
         ])
         cert = x509.CertificateBuilder().subject_name(subject).issuer_name(issuer).public_key(
             signing_key.public_key()).serial_number(x509.random_serial_number()
-                                                         ).not_valid_before(datetime.datetime.utcnow()).not_valid_after(
+                                                         ).not_valid_before(datetime.datetime.utcnow() - datetime.timedelta(days=2)).not_valid_after(
             datetime.datetime.utcnow() + datetime.timedelta(days=10)).add_extension(
             x509.SubjectAlternativeName([x509.DNSName(u"localhost")]), critical=False, ).sign(signing_key,
                                                                                               hashes.SHA256(),
