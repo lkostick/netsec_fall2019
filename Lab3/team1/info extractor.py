@@ -95,14 +95,14 @@ with open('exits.csv') as f:
 for i in dates:
     print(i)
     for j in teams:
-        print('\tteam' + j.team_number)
-        if i in j.dates:
+        if i in j.dates and j.connection_num[j.dates.index(i)] > 0:
+            print('\tteam' + j.team_number)
             date_index = j.dates.index(i)
             print('\t\tNumber of connections: ', j.connection_num[date_index])
             print('\t\tNumber of payments: ', j.pay_num[date_index])
             print('\t\tNumber of exits: ', j.exit_num[date_index])
-        else:
-            print('\t\tNumber of connections: 0')
-            print('\t\tNumber of payments: 0')
-            print('\t\tNumber of exits: 0')
+        # else:
+        #     print('\t\tNumber of connections: 0')
+        #     print('\t\tNumber of payments: 0')
+        #     print('\t\tNumber of exits: 0')
 

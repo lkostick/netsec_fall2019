@@ -144,6 +144,7 @@ class GameClientProtocol(asyncio.Protocol):
                 self.flush_output('>> ', end='')
                 game_input = sys.stdin.readline().strip()
                 self.write(game_input)
+        self.loop.stop()
 
     def flush_output(self, *args, **kargs):
         print(*args, **kargs)
