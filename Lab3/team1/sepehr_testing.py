@@ -134,6 +134,8 @@ class GameClientProtocol(asyncio.Protocol):
             pkt = create_game_pay_packet(self.transferResult.Receipt, self.transferResult.ReceiptSignature)
             self.transport.write(pkt.__serialize__())
 
+        self.loop.close()
+
         return result
 
     def game_next_input(self):
